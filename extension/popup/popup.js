@@ -1,6 +1,6 @@
 // popup.js
 
-const API_BASE = 'https://REPLACE_ME.execute-api.us-east-1.amazonaws.com';
+const API_BASE = 'https://d85j77xztl.execute-api.us-east-2.amazonaws.com';
 
 // ── Elements ──────────────────────────────────────────────────────────────────
 const authScreen = document.getElementById('auth-screen');
