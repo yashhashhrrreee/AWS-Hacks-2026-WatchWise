@@ -5,7 +5,7 @@ phases:
     runtime-versions:
       nodejs: 20
     commands:
-      - npm install -g aws-sam-cli
+      - pip3 install aws-sam-cli
       - cd backend/lambdas && npm install && cd ../..
 
   build:
