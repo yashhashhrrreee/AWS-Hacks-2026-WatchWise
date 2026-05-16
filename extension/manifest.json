@@ -10,7 +10,8 @@
   ],
   "host_permissions": [
     "https://www.youtube.com/*",
-    "https://*.execute-api.*.amazonaws.com/*"
+    "https://*.execute-api.us-east-2.amazonaws.com/*",
+    "wss://*.execute-api.us-east-2.amazonaws.com/*"
   ],
   "background": {
     "service_worker": "src/background.js"
