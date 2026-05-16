@@ -6,14 +6,18 @@ phases:
       nodejs: 20
     commands:
       - pip3 install aws-sam-cli
+
+  pre_build:
+    commands:
       - cd backend/lambdas && npm install && cd ../..
 
   build:
     commands:
-      - cd $CODEBUILD_SRC_DIR/backend/infra && sam build --template template.yaml --base-dir ..
-      - cd $CODEBUILD_SRC_DIR/backend/infra && sam package --template-file .aws-sam/build/template.yaml --output-template-file packaged.yaml --s3-bucket $SAM_ARTIFACT_BUCKET --region $AWS_DEFAULT_REGION
+      - cd $CODEBUILD_SRC_DIR/backend/infra
+      - sam build --template template.yaml --base-dir ..
+      - sam package --template-file .aws-sam/build/template.yaml --output-template-file packaged.yaml --s3-bucket $SAM_ARTIFACT_BUCKET --region $AWS_DEFAULT_REGION
 
 artifacts:
   files:
     - packaged.yaml
-  base-directory: backend/infra
+  base-directory: $CODEBUILD_SRC_DIR/backend/infra
