@@ -1,6 +1,6 @@
 // auth.js — auth utilities used by popup.js
 
-const API_BASE = 'https://REPLACE_ME.execute-api.us-east-1.amazonaws.com';
+const API_BASE = 'https://d85j77xztl.execute-api.us-east-2.amazonaws.com';
 
 export async function signup(email, password) {
   const res = await fetch(`${API_BASE}/auth/signup`, {
