@@ -1,0 +1,20 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 20
+    commands:
+      - npm install -g aws-sam-cli
+      - cd backend/lambdas && npm install && cd ../..
+
+  build:
+    commands:
+      - cd backend/infra
+      - sam build --template template.yaml --base-dir ..
+      - cd ../..
+
+artifacts:
+  files:
+    - '**/*'
+  base-directory: backend/infra/.aws-sam/build
