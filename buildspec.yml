@@ -10,8 +10,8 @@ phases:
 
   build:
     commands:
-      - cd backend/infra && sam build --template template.yaml --base-dir ..
-      - cd backend/infra && sam package --template-file .aws-sam/build/template.yaml --output-template-file packaged.yaml --s3-bucket $SAM_ARTIFACT_BUCKET --region $AWS_DEFAULT_REGION
+      - cd $CODEBUILD_SRC_DIR/backend/infra && sam build --template template.yaml --base-dir ..
+      - cd $CODEBUILD_SRC_DIR/backend/infra && sam package --template-file .aws-sam/build/template.yaml --output-template-file packaged.yaml --s3-bucket $SAM_ARTIFACT_BUCKET --region $AWS_DEFAULT_REGION
 
 artifacts:
   files:
