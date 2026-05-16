@@ -1,0 +1,222 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: FocusGuard — YouTube study tracker
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Timeout: 15
+    MemorySize: 256
+    Environment:
+      Variables:
+        USERS_TABLE: !Ref UsersTable
+        SESSIONS_TABLE: !Ref SessionsTable
+        DAILY_TOTALS_TABLE: !Ref DailyTotalsTable
+        CONNECTIONS_TABLE: !Ref ConnectionsTable
+        JWT_SECRET: !Sub '{{resolve:ssm:/focusguard/jwt-secret}}'
+        BEDROCK_MODEL_ID: anthropic.claude-3-haiku-20240307-v1:0
+
+# ── DynamoDB Tables ───────────────────────────────────────────────────────────
+
+Resources:
+
+  UsersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: fg_users
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+
+  SessionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: fg_sessions
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: sessionId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+        - AttributeName: sessionId
+          KeyType: RANGE
+      StreamSpecification:
+        StreamViewType: NEW_IMAGE
+
+  DailyTotalsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: fg_daily_totals
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: date
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+        - AttributeName: date
+          KeyType: RANGE
+
+  ConnectionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: fg_connections
+      BillingMode: PAY_PER_REQUEST
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+
+# ── HTTP API ──────────────────────────────────────────────────────────────────
+
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowOrigins:
+          - '*'
+        AllowHeaders:
+          - Content-Type
+          - Authorization
+        AllowMethods:
+          - POST
+          - GET
+          - OPTIONS
+
+  AuthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: focusguard-auth
+      CodeUri: lambdas/
+      Handler: auth/index.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UsersTable
+      Events:
+        Login:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /auth/login
+            Method: POST
+        Signup:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /auth/signup
+            Method: POST
+
+  ClassifyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: focusguard-classify
+      CodeUri: lambdas/
+      Handler: classify/index.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: bedrock:InvokeModel
+              Resource: '*'
+      Events:
+        Classify:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /classify
+            Method: POST
+
+  SessionWriterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: focusguard-session-writer
+      CodeUri: lambdas/
+      Handler: session-writer/index.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref SessionsTable
+      Events:
+        WriteSession:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /session
+            Method: POST
+
+# ── WebSocket API ─────────────────────────────────────────────────────────────
+
+  WebSocketApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: focusguard-ws
+      ProtocolType: WEBSOCKET
+      RouteSelectionExpression: '$request.body.action'
+
+  WsConnectFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: focusguard-ws-connect
+      CodeUri: lambdas/
+      Handler: ws-connect/index.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ConnectionsTable
+
+  WsDisconnectFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: focusguard-ws-disconnect
+      CodeUri: lambdas/
+      Handler: ws-disconnect/index.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ConnectionsTable
+
+# ── DynamoDB Streams → Lambda ─────────────────────────────────────────────────
+
+  StreamProcessorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: focusguard-stream-processor
+      CodeUri: lambdas/
+      Handler: stream-processor/index.handler
+      Environment:
+        Variables:
+          WS_ENDPOINT: !Sub 'https://${WebSocketApi}.execute-api.${AWS::Region}.amazonaws.com/prod'
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DailyTotalsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ConnectionsTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref UsersTable
+        - Statement:
+            - Effect: Allow
+              Action: execute-api:ManageConnections
+              Resource: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketApi}/*'
+      Events:
+        SessionStream:
+          Type: DynamoDB
+          Properties:
+            Stream: !GetAtt SessionsTable.StreamArn
+            StartingPosition: LATEST
+            BatchSize: 10
+
+Outputs:
+  HttpApiUrl:
+    Value: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com'
+  WebSocketUrl:
+    Value: !Sub 'wss://${WebSocketApi}.execute-api.${AWS::Region}.amazonaws.com/prod'

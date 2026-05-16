@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FocusGuard</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+
+  <!-- Auth Screen -->
+  <div id="auth-screen" class="screen">
+    <div class="logo">
+      <span class="logo-icon">🎯</span>
+      <h1>FocusGuard</h1>
+      <p class="tagline">Stay on track.</p>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="login">Login</button>
+      <button class="tab" data-tab="signup">Sign Up</button>
+    </div>
+
+    <form id="auth-form">
+      <div class="field">
+        <label for="email">Email</label>
+        <input type="email" id="email" placeholder="you@example.com" required />
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input type="password" id="password" placeholder="••••••••" required />
+      </div>
+      <button type="submit" class="btn-primary" id="auth-btn">Login</button>
+      <p id="auth-error" class="error hidden"></p>
+    </form>
+  </div>
+
+  <!-- Dashboard Screen -->
+  <div id="dashboard-screen" class="screen hidden">
+
+    <!-- Alert banner (shown when WS alert is pending) -->
+    <div id="alert-banner" class="alert-banner hidden">
+      <span id="alert-icon"></span>
+      <span id="alert-text"></span>
+    </div>
+
+    <div class="dashboard-header">
+      <span class="logo-icon">🎯</span>
+      <span class="dash-title">FocusGuard</span>
+      <button id="logout-btn" class="btn-ghost">Logout</button>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-label">Non-Academic Time Today</div>
+      <div class="stat-value" id="time-used">-- min</div>
+      <div class="stat-bar-bg">
+        <div class="stat-bar-fill" id="time-bar" style="width: 0%"></div>
+      </div>
+      <div class="stat-limit" id="time-limit">of -- min limit</div>
+    </div>
+
+    <div class="status-row">
+      <div class="status-dot" id="status-dot"></div>
+      <span id="status-text">Monitoring paused</span>
+    </div>
+
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
