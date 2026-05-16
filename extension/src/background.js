@@ -3,8 +3,8 @@
 //          incoming alert notifications from stream-processor Lambda
 
 // ── Config (replace with your actual endpoints after deploy) ─────────────────
-const API_BASE = 'https://REPLACE_ME.execute-api.us-east-1.amazonaws.com';
-const WS_URL   = 'wss://REPLACE_ME.execute-api.us-east-1.amazonaws.com/prod';
+const API_BASE = 'https://d85j77xztl.execute-api.us-east-2.amazonaws.com';
+const WS_URL   = 'wss://japbfh6ltj.execute-api.us-east-2.amazonaws.com/prod';
 
 // ── Auth helpers ──────────────────────────────────────────────────────────────
 
