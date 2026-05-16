@@ -3,21 +3,17 @@ version: 0.2
 phases:
   install:
     runtime-versions:
-      python: 3.12
+      nodejs: 20
     commands:
-      - pip install aws-sam-cli
+      - pip3 install aws-sam-cli
+      - cd backend/lambdas && npm install && cd ../..
 
   build:
     commands:
-      - sam build
-
-  post_build:
-    commands:
-      - sam deploy
-          --no-confirm-changeset
-          --no-fail-on-empty-changeset
-          --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND
+      - cd backend/infra && sam build --template template.yaml --base-dir ..
+      - cd backend/infra && sam package --template-file .aws-sam/build/template.yaml --output-template-file packaged.yaml --s3-bucket $SAM_ARTIFACT_BUCKET --region $AWS_DEFAULT_REGION
 
 artifacts:
   files:
-    - '**/*'
+    - packaged.yaml
+  base-directory: backend/infra
