@@ -1,6 +1,6 @@
 // lambdas/stream-processor/index.js
 // Triggered by DynamoDB Streams on fg_sessions table
-// Aggregates daily non-edu time, checks 50% / 100% thresholds, pushes via WebSocket
+// Aggregates daily time, updates streaks, checks thresholds, pushes via WebSocket
 
 const { DynamoDBClient, GetItemCommand, UpdateItemCommand } = require('@aws-sdk/client-dynamodb');
 const { ApiGatewayManagementApiClient, PostToConnectionCommand } = require('@aws-sdk/client-apigatewaymanagementapi');
@@ -28,7 +28,7 @@ exports.handler = async (event) => {
 
     if (!userId || !date || durationSeconds < 1) continue;
 
-    // Educational sessions: only accumulate educationalSeconds, no alert checks
+    // Educational sessions: accumulate educationalSeconds + update streak
     if (classification === 'educational') {
       try {
         await ddb.send(new UpdateItemCommand({
@@ -37,8 +37,9 @@ exports.handler = async (event) => {
           UpdateExpression: 'ADD educationalSeconds :dur',
           ExpressionAttributeValues: { ':dur': { N: String(durationSeconds) } },
         }));
+        await updateStreak(userId, date);
       } catch (err) {
-        console.error(`Error updating edu seconds for user ${userId}:`, err);
+        console.error(`Error processing edu session for user ${userId}:`, err);
       }
       continue;
     }
@@ -93,6 +94,56 @@ exports.handler = async (event) => {
     }
   }
 };
+
+function dateOffset(base, days) {
+  const d = new Date(base + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+async function updateStreak(userId, today) {
+  const userRow = await ddb.send(new GetItemCommand({
+    TableName: USERS_TABLE,
+    Key: { userId: { S: userId } },
+    ProjectionExpression: 'currentStreak, lastStudyDate',
+  }));
+
+  const lastStudyDate = userRow.Item?.lastStudyDate?.S || null;
+  const currentStreak = parseInt(userRow.Item?.currentStreak?.N || '0', 10);
+
+  // Already counted today — skip
+  if (lastStudyDate === today) return;
+
+  const yesterday   = dateOffset(today, -1);
+  const twoDaysAgo  = dateOffset(today, -2);
+
+  let newStreak;
+
+  if (!lastStudyDate || lastStudyDate < twoDaysAgo) {
+    // No prior study or missed more than 1 day with no grace possible
+    newStreak = 1;
+  } else if (lastStudyDate === yesterday) {
+    // Consecutive day
+    newStreak = currentStreak + 1;
+  } else if (lastStudyDate === twoDaysAgo) {
+    // Missed exactly 1 day — check 12hr grace window from midnight UTC of today
+    const midnightToday = new Date(today + 'T00:00:00Z').getTime();
+    const graceDeadline = midnightToday + 12 * 60 * 60 * 1000;
+    newStreak = Date.now() < graceDeadline ? currentStreak + 1 : 1;
+  } else {
+    newStreak = 1;
+  }
+
+  await ddb.send(new UpdateItemCommand({
+    TableName: USERS_TABLE,
+    Key: { userId: { S: userId } },
+    UpdateExpression: 'SET currentStreak = :s, lastStudyDate = :d',
+    ExpressionAttributeValues: {
+      ':s': { N: String(newStreak) },
+      ':d': { S: today },
+    },
+  }));
+}
 
 async function markAlertSent(userId, date, level) {
   const attr = level === '100' ? 'alert100Sent' : 'alert50Sent';
