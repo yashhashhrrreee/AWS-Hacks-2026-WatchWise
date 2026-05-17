@@ -292,6 +292,12 @@ html, body {
   font-size: 10px;
   color: var(--text-muted);
 }
+.score-reset-hint {
+  font-size: 9px;
+  color: var(--text-muted);
+  opacity: 0.6;
+  margin-top: 2px;
+}
 
 /* ── Time tracker ────────────────────────────────────────────────────── */
 .time-row {

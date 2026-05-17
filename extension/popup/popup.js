@@ -11,6 +11,7 @@ const tabs       = document.querySelectorAll('.tab');
 
 const scoreNum        = document.getElementById('score-num');
 const studyCaption    = document.getElementById('study-caption');
+const resetHint       = document.getElementById('reset-hint');
 
 const eduValueEl      = document.getElementById('edu-value');
 const eduBarEl        = document.getElementById('edu-bar');
@@ -146,6 +147,16 @@ function timeUntilMidnight() {
   return formatHMS(diffSec);
 }
 
+function timeUntilMidnightHM() {
+  const now = new Date();
+  const midnight = new Date(now);
+  midnight.setHours(24, 0, 0, 0);
+  const diffSec = Math.floor((midnight - now) / 1000);
+  const h = Math.floor(diffSec / 3600);
+  const m = Math.floor((diffSec % 3600) / 60);
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
 function render() {
   const usedSec      = serverTotalSec + liveSessionSec;
   const remainingSec = Math.max(0, limitSec - usedSec);
@@ -171,6 +182,7 @@ function render() {
       studyCaption.textContent = `${studyPct}% of 2hr goal`;
     }
   }
+  if (resetHint) resetHint.textContent = `resets in ${timeUntilMidnightHM()}`;
 
   if (warnPctEl)       warnPctEl.textContent = String(entPct);
   if (warnRemainingEl) warnRemainingEl.textContent = formatHMS(remainingSec);
