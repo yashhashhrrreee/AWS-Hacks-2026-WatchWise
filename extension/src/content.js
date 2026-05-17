@@ -13,6 +13,8 @@
   let isNonEducational = false;
   let timerInterval = null;
   let sessionSeconds = 0;
+  let eduTimerInterval = null;
+  let eduSessionSeconds = 0;
   let videoPlaying = false;
 
   // ── Helpers ──────────────────────────────────────────────────────────────
@@ -45,7 +47,13 @@
 
   function publishLive() {
     chrome.storage.local.set({
-      fg_live_session: { seconds: sessionSeconds, playing: !!timerInterval, ts: Date.now() }
+      fg_live_session: {
+        seconds: sessionSeconds,
+        playing: !!timerInterval,
+        eduSeconds: eduSessionSeconds,
+        eduPlaying: !!eduTimerInterval,
+        ts: Date.now()
+      }
     });
   }
 
@@ -64,6 +72,25 @@
       log(`timer STOPPED at ${sessionSeconds}s`);
       clearInterval(timerInterval);
       timerInterval = null;
+      publishLive();
+    }
+  }
+
+  function startEduTimer() {
+    if (eduTimerInterval) return;
+    log('edu timer STARTED (educational video playing)');
+    eduTimerInterval = setInterval(() => {
+      eduSessionSeconds++;
+      publishLive();
+    }, 1000);
+    publishLive();
+  }
+
+  function stopEduTimer() {
+    if (eduTimerInterval) {
+      log(`edu timer STOPPED at ${eduSessionSeconds}s`);
+      clearInterval(eduTimerInterval);
+      eduTimerInterval = null;
       publishLive();
     }
   }
@@ -95,17 +122,20 @@
   function bindVideoEvents(video) {
     video.addEventListener('play', () => {
       if (isNonEducational) startTimer();
+      else startEduTimer();
       videoPlaying = true;
     });
 
     video.addEventListener('pause', () => {
       stopTimer();
+      stopEduTimer();
       videoPlaying = false;
       flushSession();
     });
 
     video.addEventListener('ended', () => {
       stopTimer();
+      stopEduTimer();
       videoPlaying = false;
       flushSession();
     });
@@ -122,7 +152,9 @@
     currentVideoId = videoId;
     isNonEducational = false;
     stopTimer();
+    stopEduTimer();
     sessionSeconds = 0;
+    eduSessionSeconds = 0;
 
     // Wait a moment for YouTube's DOM to populate metadata
     await new Promise(r => setTimeout(r, 2000));
@@ -146,6 +178,9 @@
           isNonEducational = true;
           const video = getVideoElement();
           if (video && !video.paused) startTimer();
+        } else if (response && response.educational === true) {
+          const video = getVideoElement();
+          if (video && !video.paused) startEduTimer();
         }
       }
     );

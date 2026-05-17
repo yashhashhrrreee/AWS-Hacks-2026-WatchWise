@@ -39,6 +39,8 @@ let serverEduSec   = 0;
 let limitSec       = 7200;
 let liveSessionSec = 0;
 let livePlaying    = false;    // is a non-edu video currently playing
+let liveEduSec     = 0;
+let liveEduPlaying = false;    // is an edu video currently playing
 let liveLastTs     = 0;        // ms timestamp of last update from content.js
 let statsRefreshInterval = null;
 let smoothTickInterval   = null;
@@ -151,7 +153,7 @@ function render() {
   const entPct       = limitSec > 0 ? Math.min(100, Math.round((usedSec / limitSec) * 100)) : 0;
   const eduPct       = limitSec > 0 ? Math.min(100, Math.round((serverEduSec / limitSec) * 100)) : 0;
 
-  if (eduValueEl)     eduValueEl.textContent = formatHMS(serverEduSec);
+  if (eduValueEl)     eduValueEl.textContent = formatHMS(serverEduSec + liveEduSec);
   if (eduBarEl)       eduBarEl.style.width = `${eduPct}%`;
 
   if (entValueEl)     entValueEl.textContent = formatHMS(usedSec);
@@ -179,7 +181,7 @@ function render() {
   if (warnBarEl)       warnBarEl.style.width = `${entPct}%`;
 
   if (blockLimitLabel) blockLimitLabel.textContent = formatHoursShort(limitSec);
-  if (achievementEl)   achievementEl.textContent = formatHMS(serverEduSec);
+  if (achievementEl)   achievementEl.textContent = formatHMS(serverEduSec + liveEduSec);
   if (resetCountdown)  resetCountdown.textContent = `Resets in ${timeUntilMidnight()}`;
 
   if (entPct >= 100 && !blockDismissedThisOpen) {
@@ -214,8 +216,10 @@ async function loadStats(token, userId) {
 chrome.storage.onChanged.addListener((changes) => {
   if (changes.fg_live_session) {
     const v = changes.fg_live_session.newValue || {};
-    liveSessionSec = v.seconds || 0;
+    liveSessionSec = v.seconds    || 0;
     livePlaying    = !!v.playing;
+    liveEduSec     = v.eduSeconds || 0;
+    liveEduPlaying = !!v.eduPlaying;
     liveLastTs     = v.ts || Date.now();
     render();
   }
@@ -233,13 +237,10 @@ chrome.storage.onChanged.addListener((changes) => {
 function startSmoothTick() {
   if (smoothTickInterval) return;
   smoothTickInterval = setInterval(() => {
-    if (livePlaying) {
-      // Only tick locally if we haven't heard from content.js in the last 1.5s
-      // (otherwise content.js's own tick is doing the job).
-      const sinceLast = Date.now() - liveLastTs;
-      if (sinceLast > 1200) {
-        liveSessionSec += 1;
-      }
+    const sinceLast = Date.now() - liveLastTs;
+    if (sinceLast > 1200) {
+      if (livePlaying)    liveSessionSec += 1;
+      if (liveEduPlaying) liveEduSec     += 1;
     }
     render();
   }, 1000);
@@ -264,8 +265,10 @@ async function showDashboard(userId) {
   blockDismissedThisOpen = false;
 
   const liveInit = storage.fg_live_session || {};
-  liveSessionSec = liveInit.seconds || 0;
+  liveSessionSec = liveInit.seconds    || 0;
   livePlaying    = !!liveInit.playing;
+  liveEduSec     = liveInit.eduSeconds || 0;
+  liveEduPlaying = !!liveInit.eduPlaying;
   liveLastTs     = liveInit.ts || 0;
   render();
   startSmoothTick();
