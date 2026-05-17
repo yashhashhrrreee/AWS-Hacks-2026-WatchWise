@@ -10,8 +10,7 @@ const authError  = document.getElementById('auth-error');
 const tabs       = document.querySelectorAll('.tab');
 
 const scoreNum        = document.getElementById('score-num');
-const dotRow          = document.getElementById('dot-row');
-const goalsCaption    = document.getElementById('goals-caption');
+const studyCaption    = document.getElementById('study-caption');
 
 const eduValueEl      = document.getElementById('edu-value');
 const eduBarEl        = document.getElementById('edu-bar');
@@ -161,19 +160,16 @@ function render() {
   if (entBarEl)       entBarEl.style.width = `${entPct}%`;
   if (entRemainingEl) entRemainingEl.textContent = `${formatHMS(remainingSec)} remaining`;
 
-  if (scoreNum) scoreNum.textContent = String(Math.max(0, 100 - entPct));
-
-  if (dotRow) {
-    const filledGreen = Math.max(0, 5 - Math.ceil(entPct / 20));
-    const orangeDot   = entPct >= 80 && entPct < 100 ? 1 : 0;
-    const redDot      = entPct >= 100 ? 1 : 0;
-    let html = '';
-    for (let i = 0; i < filledGreen; i++) html += '<span class="dot dot-green"></span>';
-    for (let i = 0; i < orangeDot; i++)   html += '<span class="dot dot-orange"></span>';
-    for (let i = 0; i < redDot; i++)      html += '<span class="dot dot-red"></span>';
-    while (html.split('<span').length - 1 < 5) html += '<span class="dot dot-dim"></span>';
-    dotRow.innerHTML = html;
-    if (goalsCaption) goalsCaption.textContent = `${filledGreen} of 5 goals hit`;
+  const totalEduSec = serverEduSec + liveEduSec;
+  const studyGoalSec = 7200;
+  const studyPct = Math.min(100, Math.round((totalEduSec / studyGoalSec) * 100));
+  if (scoreNum) scoreNum.textContent = String(studyPct);
+  if (studyCaption) {
+    if (totalEduSec >= studyGoalSec) {
+      studyCaption.textContent = 'Congrats! You studied more than 2hrs today 🎉';
+    } else {
+      studyCaption.textContent = `${studyPct}% of 2hr goal`;
+    }
   }
 
   if (warnPctEl)       warnPctEl.textContent = String(entPct);
