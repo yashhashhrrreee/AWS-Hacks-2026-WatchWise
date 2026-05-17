@@ -13,6 +13,18 @@ const scoreNum        = document.getElementById('score-num');
 const studyCaption    = document.getElementById('study-caption');
 const resetHint       = document.getElementById('reset-hint');
 
+const limitToggle     = document.getElementById('limit-toggle');
+const limitBody       = document.getElementById('limit-body');
+const limitChevron    = document.getElementById('limit-chevron');
+const limitCooldown   = document.getElementById('limit-cooldown');
+const limitCooldownTime = document.getElementById('limit-cooldown-time');
+const entLimitSlider  = document.getElementById('ent-limit-slider');
+const entLimitVal     = document.getElementById('ent-limit-val');
+const studyLimitSlider = document.getElementById('study-limit-slider');
+const studyLimitVal   = document.getElementById('study-limit-val');
+const btnSaveLimit    = document.getElementById('btn-save-limit');
+const limitSaveMsg    = document.getElementById('limit-save-msg');
+
 const eduValueEl      = document.getElementById('edu-value');
 const eduBarEl        = document.getElementById('edu-bar');
 const entValueEl      = document.getElementById('ent-value');
@@ -33,15 +45,17 @@ const blockLimitLabel = document.getElementById('block-limit-label');
 const achievementEl   = document.getElementById('achievement-value');
 const resetCountdown  = document.getElementById('reset-countdown');
 
-let currentTab     = 'login';
-let serverTotalSec = 0;
-let serverEduSec   = 0;
-let limitSec       = 7200;
-let liveSessionSec = 0;
-let livePlaying    = false;    // is a non-edu video currently playing
-let liveEduSec     = 0;
-let liveEduPlaying = false;    // is an edu video currently playing
-let liveLastTs     = 0;        // ms timestamp of last update from content.js
+let currentTab        = 'login';
+let serverTotalSec    = 0;
+let serverEduSec      = 0;
+let limitSec          = 7200;
+let studyGoalSec      = 7200;
+let limitChangedAt    = null;
+let liveSessionSec    = 0;
+let livePlaying       = false;
+let liveEduSec        = 0;
+let liveEduPlaying    = false;
+let liveLastTs        = 0;
 let statsRefreshInterval = null;
 let smoothTickInterval   = null;
 
@@ -172,17 +186,20 @@ function render() {
   if (entRemainingEl) entRemainingEl.textContent = `${formatHMS(remainingSec)} remaining`;
 
   const totalEduSec = serverEduSec + liveEduSec;
-  const studyGoalSec = 7200;
   const studyPct = Math.min(100, Math.round((totalEduSec / studyGoalSec) * 100));
   if (scoreNum) scoreNum.textContent = String(studyPct);
+  const studyGoalHrs = (studyGoalSec / 3600).toFixed(1).replace('.0', '');
   if (studyCaption) {
     if (totalEduSec >= studyGoalSec) {
-      studyCaption.textContent = 'Congrats! You studied more than 2hrs today 🎉';
+      studyCaption.textContent = `Congrats! You studied more than ${studyGoalHrs}hrs today 🎉`;
     } else {
-      studyCaption.textContent = `${studyPct}% of 2hr goal`;
+      studyCaption.textContent = `${studyPct}% of ${studyGoalHrs}hr goal`;
     }
   }
   if (resetHint) resetHint.textContent = `resets in ${timeUntilMidnightHM()}`;
+
+  // Limit settings cooldown display
+  renderLimitCooldown();
 
   if (warnPctEl)       warnPctEl.textContent = String(entPct);
   if (warnRemainingEl) warnRemainingEl.textContent = formatHMS(remainingSec);
@@ -213,8 +230,11 @@ async function loadStats(token, userId) {
 
     serverTotalSec = data.totalSeconds || 0;
     limitSec       = data.limitSeconds || 7200;
+    studyGoalSec   = data.studyGoalSeconds || 7200;
+    limitChangedAt = data.limitChangedAt || null;
     if (typeof data.educationalSeconds === 'number') serverEduSec = data.educationalSeconds;
 
+    syncLimitSliders();
     render();
   } catch (err) {
     console.warn('[FocusGuard] stats fetch failed', err);
@@ -261,6 +281,122 @@ function stopSmoothTick() {
   }
 }
 
+// ── Limit settings UI ─────────────────────────────────────────────────────────
+
+function secToSliderVal(sec) {
+  return (sec / 3600).toFixed(1);
+}
+
+function sliderValToSec(val) {
+  return Math.round(parseFloat(val) * 3600);
+}
+
+function formatSliderLabel(val) {
+  const h = parseFloat(val);
+  return h === Math.floor(h) ? `${Math.floor(h)}h` : `${h}h`;
+}
+
+function getLimitCooldownRemaining() {
+  if (!limitChangedAt) return 0;
+  const elapsed = Date.now() - new Date(limitChangedAt).getTime();
+  return Math.max(0, 24 * 3600 * 1000 - elapsed);
+}
+
+function renderLimitCooldown() {
+  if (!limitCooldown || !btnSaveLimit || !entLimitSlider || !studyLimitSlider) return;
+  const remaining = getLimitCooldownRemaining();
+  const onCooldown = remaining > 0;
+
+  if (onCooldown) {
+    const totalSec = Math.ceil(remaining / 1000);
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    limitCooldownTime.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+    limitCooldown.classList.remove('hidden');
+  } else {
+    limitCooldown.classList.add('hidden');
+  }
+
+  entLimitSlider.disabled  = onCooldown;
+  studyLimitSlider.disabled = onCooldown;
+  btnSaveLimit.disabled    = onCooldown;
+}
+
+function syncLimitSliders() {
+  if (!entLimitSlider || !studyLimitSlider) return;
+  const eVal = secToSliderVal(limitSec);
+  const sVal = secToSliderVal(studyGoalSec);
+  entLimitSlider.value  = eVal;
+  studyLimitSlider.value = sVal;
+  if (entLimitVal)   entLimitVal.textContent   = formatSliderLabel(eVal);
+  if (studyLimitVal) studyLimitVal.textContent = formatSliderLabel(sVal);
+}
+
+function initLimitCard(token, userId) {
+  if (!limitToggle) return;
+
+  // Toggle expand/collapse
+  limitToggle.addEventListener('click', () => {
+    const open = !limitBody.classList.contains('hidden');
+    limitBody.classList.toggle('hidden', open);
+    limitChevron.classList.toggle('open', !open);
+  });
+
+  // Live slider labels
+  entLimitSlider.addEventListener('input', () => {
+    entLimitVal.textContent = formatSliderLabel(entLimitSlider.value);
+  });
+  studyLimitSlider.addEventListener('input', () => {
+    studyLimitVal.textContent = formatSliderLabel(studyLimitSlider.value);
+  });
+
+  // Save
+  btnSaveLimit.addEventListener('click', async () => {
+    const newLimitSec = sliderValToSec(entLimitSlider.value);
+    const newStudySec = sliderValToSec(studyLimitSlider.value);
+
+    btnSaveLimit.disabled = true;
+    btnSaveLimit.textContent = 'Saving…';
+    limitSaveMsg.className = 'limit-save-msg hidden';
+
+    try {
+      const res = await fetch(`${API_BASE}/limit`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ userId, limitSeconds: newLimitSec, studyGoalSeconds: newStudySec }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        limitSaveMsg.textContent = data.message || 'Save failed';
+        limitSaveMsg.className = 'limit-save-msg error';
+        limitSaveMsg.classList.remove('hidden');
+        btnSaveLimit.disabled = false;
+        btnSaveLimit.textContent = 'Save limits';
+        return;
+      }
+
+      limitSec       = data.limitSeconds;
+      studyGoalSec   = data.studyGoalSeconds;
+      limitChangedAt = data.limitChangedAt;
+
+      limitSaveMsg.textContent = 'Saved!';
+      limitSaveMsg.className = 'limit-save-msg success';
+      limitSaveMsg.classList.remove('hidden');
+      setTimeout(() => limitSaveMsg.classList.add('hidden'), 2500);
+
+      renderLimitCooldown();
+      render();
+    } catch (err) {
+      limitSaveMsg.textContent = 'Network error';
+      limitSaveMsg.className = 'limit-save-msg error';
+      limitSaveMsg.classList.remove('hidden');
+      btnSaveLimit.disabled = false;
+      btnSaveLimit.textContent = 'Save limits';
+    }
+  });
+}
+
 async function showDashboard(userId) {
   authScreen.classList.add('hidden');
   dashScreen.classList.remove('hidden');
@@ -286,6 +422,7 @@ async function showDashboard(userId) {
   }
 
   if (storage.fg_token) {
+    initLimitCard(storage.fg_token, userId);
     loadStats(storage.fg_token, userId);
     clearInterval(statsRefreshInterval);
     statsRefreshInterval = setInterval(
