@@ -156,6 +156,7 @@ if (logoutBtn) {
     chrome.runtime.sendMessage({ type: 'LOGOUT' });
     dashScreen.classList.add('hidden');
     authScreen.classList.remove('hidden');
+    loadSavedCreds();
   });
 }
 
