@@ -341,9 +341,140 @@
     } catch { /* context gone */ }
   }
 
+  // ── Warning toast ─────────────────────────────────────────────────────────
+
+  function showWarningToast(totalMin, limitMin) {
+    if (document.getElementById('fg-warning-toast')) return;
+
+    const pct = Math.round((totalMin / limitMin) * 100);
+    const remaining = limitMin - totalMin;
+
+    const toast = document.createElement('div');
+    toast.id = 'fg-warning-toast';
+    toast.innerHTML = `
+      <style>
+        #fg-warning-toast {
+          position: fixed;
+          top: 72px;
+          right: 16px;
+          z-index: 2147483646;
+          width: 300px;
+          background: linear-gradient(145deg, rgba(20,12,50,0.97), rgba(15,20,50,0.97));
+          border: 1px solid rgba(249,115,22,0.4);
+          border-radius: 14px;
+          padding: 14px 16px;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          color: #f0ecff;
+          box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04);
+          animation: fg-slide-in 0.3s ease;
+        }
+        @keyframes fg-slide-in {
+          from { opacity: 0; transform: translateX(20px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+        #fg-warning-toast .fg-toast-header {
+          display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+        }
+        #fg-warning-toast .fg-toast-icon {
+          width: 28px; height: 28px; flex-shrink: 0;
+          background: rgba(249,115,22,0.15);
+          border: 1px solid rgba(249,115,22,0.35);
+          border-radius: 50%;
+          display: flex; align-items: center; justify-content: center;
+        }
+        #fg-warning-toast .fg-toast-title {
+          font-size: 13px; font-weight: 600; flex: 1;
+        }
+        #fg-warning-toast .fg-toast-close {
+          background: none; border: none; color: rgba(200,185,255,0.5);
+          font-size: 16px; cursor: pointer; padding: 0; line-height: 1;
+        }
+        #fg-warning-toast .fg-toast-close:hover { color: #f0ecff; }
+        #fg-warning-toast .fg-toast-body {
+          font-size: 11px; color: rgba(200,185,255,0.75); margin-bottom: 10px; line-height: 1.5;
+        }
+        #fg-warning-toast .fg-toast-bar-track {
+          height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; margin-bottom: 10px;
+        }
+        #fg-warning-toast .fg-toast-bar-fill {
+          height: 100%; border-radius: 2px; background: #f97316;
+          width: ${Math.min(100, pct)}%;
+        }
+        #fg-warning-toast .fg-toast-actions {
+          display: flex; gap: 8px;
+        }
+        #fg-warning-toast .fg-btn {
+          flex: 1; padding: 6px 0; border-radius: 8px; font-size: 11px; font-weight: 500;
+          font-family: inherit; cursor: pointer; border: 1px solid;
+          transition: background 0.15s;
+        }
+        #fg-warning-toast .fg-btn-dismiss {
+          background: rgba(127,119,221,0.15); border-color: rgba(127,119,221,0.3); color: #c4b8f5;
+        }
+        #fg-warning-toast .fg-btn-dismiss:hover { background: rgba(127,119,221,0.28); }
+        #fg-warning-toast .fg-btn-block {
+          background: rgba(248,113,113,0.12); border-color: rgba(248,113,113,0.3); color: #fca5a5;
+        }
+        #fg-warning-toast .fg-btn-block:hover { background: rgba(248,113,113,0.22); }
+        #fg-warning-toast .fg-btn-block.active {
+          background: rgba(248,113,113,0.25); border-color: rgba(248,113,113,0.6); color: #f87171;
+        }
+      </style>
+      <div class="fg-toast-header">
+        <div class="fg-toast-icon">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+            stroke="#f97316" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+        </div>
+        <span class="fg-toast-title">Halfway through your limit</span>
+        <button class="fg-toast-close" id="fg-toast-close-btn">×</button>
+      </div>
+      <div class="fg-toast-body">
+        Used ${totalMin} of ${limitMin} min entertainment today. ${remaining} min remaining.
+      </div>
+      <div class="fg-toast-bar-track"><div class="fg-toast-bar-fill"></div></div>
+      <div class="fg-toast-actions">
+        <button class="fg-btn fg-btn-dismiss" id="fg-toast-dismiss">Got it</button>
+        <button class="fg-btn fg-btn-block" id="fg-toast-block-btn">Block at 100%</button>
+      </div>`;
+
+    document.body.appendChild(toast);
+
+    // Auto-dismiss after 12s
+    const autoDismiss = setTimeout(() => toast.remove(), 12000);
+
+    document.getElementById('fg-toast-close-btn').addEventListener('click', () => {
+      clearTimeout(autoDismiss); toast.remove();
+    });
+    document.getElementById('fg-toast-dismiss').addEventListener('click', () => {
+      clearTimeout(autoDismiss); toast.remove();
+    });
+
+    const blockBtn = document.getElementById('fg-toast-block-btn');
+
+    // Reflect current block mode state
+    chrome.storage.local.get('fg_block_mode').then(s => {
+      if (s.fg_block_mode) blockBtn.classList.add('active');
+      blockBtn.textContent = s.fg_block_mode ? 'Block mode: ON' : 'Block at 100%';
+    }).catch(() => {});
+
+    blockBtn.addEventListener('click', async () => {
+      try {
+        const s = await chrome.storage.local.get('fg_block_mode');
+        const newVal = !s.fg_block_mode;
+        await chrome.storage.local.set({ fg_block_mode: newVal });
+        blockBtn.classList.toggle('active', newVal);
+        blockBtn.textContent = newVal ? 'Block mode: ON' : 'Block at 100%';
+      } catch { /* context gone */ }
+    });
+  }
+
   // Listen for block injection from background
   chrome.runtime.onMessage.addListener((msg) => {
     if (msg.type === 'SHOW_BLOCK_OVERLAY') showBlockOverlay();
+    if (msg.type === 'SHOW_WARNING_TOAST')  showWarningToast(msg.totalMin, msg.limitMin);
   });
 
   // ── SPA navigation detection ──────────────────────────────────────────────
