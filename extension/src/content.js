@@ -43,12 +43,20 @@
 
   // ── Timer ────────────────────────────────────────────────────────────────
 
+  function publishLive() {
+    chrome.storage.local.set({
+      fg_live_session: { seconds: sessionSeconds, playing: !!timerInterval, ts: Date.now() }
+    });
+  }
+
   function startTimer() {
     if (timerInterval) return;
     log('timer STARTED (non-educational video playing)');
     timerInterval = setInterval(() => {
       sessionSeconds++;
+      publishLive();
     }, 1000);
+    publishLive();
   }
 
   function stopTimer() {
@@ -56,6 +64,7 @@
       log(`timer STOPPED at ${sessionSeconds}s`);
       clearInterval(timerInterval);
       timerInterval = null;
+      publishLive();
     }
   }
 
@@ -78,6 +87,7 @@
     });
 
     sessionSeconds = 0;
+    publishLive();
   }
 
   // ── Video event binding ───────────────────────────────────────────────────

@@ -69,6 +69,7 @@ authForm.addEventListener('submit', async (e) => {
 
 // ── Logout ────────────────────────────────────────────────────────────────────
 document.getElementById('logout-btn').addEventListener('click', async () => {
+  clearInterval(statsRefreshInterval);
   await chrome.storage.local.remove(['fg_token', 'fg_userId', 'fg_pending_alert']);
   chrome.runtime.sendMessage({ type: 'LOGOUT' });
   dashScreen.classList.add('hidden');
@@ -76,6 +77,8 @@ document.getElementById('logout-btn').addEventListener('click', async () => {
 });
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
+let statsRefreshInterval = null;
+
 async function showDashboard(userId) {
   authScreen.classList.add('hidden');
   dashScreen.classList.remove('hidden');
@@ -87,8 +90,13 @@ async function showDashboard(userId) {
     chrome.storage.local.remove('fg_pending_alert');
   }
 
-  // Fetch daily stats
-  if (storage.fg_token) loadStats(storage.fg_token, userId);
+  // Fetch server total once, then sync every 15s to catch flushed sessions
+  // (Smooth 1s tick comes from content.js → chrome.storage live updates)
+  if (storage.fg_token) {
+    loadStats(storage.fg_token, userId);
+    clearInterval(statsRefreshInterval);
+    statsRefreshInterval = setInterval(() => loadStats(storage.fg_token, userId), 15000);
+  }
 }
 
 function formatHMS(totalSeconds) {
@@ -100,6 +108,23 @@ function formatHMS(totalSeconds) {
   return `${pad(h)}:${pad(m)}:${pad(sec)}`;
 }
 
+let serverTotalSec = 0;
+let limitSec       = 7200;
+let liveSessionSec = 0;
+
+function renderTotal() {
+  const used = serverTotalSec + liveSessionSec;
+  const pct  = Math.min(100, Math.round((used / limitSec) * 100));
+
+  timeUsed.textContent  = formatHMS(used);
+  timeLimit.textContent = `of ${formatHMS(limitSec)} limit`;
+  timeBar.style.width   = `${pct}%`;
+
+  if (pct >= 100) timeBar.className = 'stat-bar-fill danger';
+  else if (pct >= 50) timeBar.className = 'stat-bar-fill warn';
+  else timeBar.className = 'stat-bar-fill';
+}
+
 async function loadStats(token, userId) {
   try {
     const res = await fetch(`${API_BASE}/stats?userId=${encodeURIComponent(userId)}`, {
@@ -107,17 +132,9 @@ async function loadStats(token, userId) {
     });
     const data = await res.json();
 
-    const usedSec  = data.totalSeconds || 0;
-    const limitSec = data.limitSeconds || 7200;
-    const pct      = Math.min(100, Math.round((usedSec / limitSec) * 100));
-
-    timeUsed.textContent  = formatHMS(usedSec);
-    timeLimit.textContent = `of ${formatHMS(limitSec)} limit`;
-    timeBar.style.width   = `${pct}%`;
-
-    if (pct >= 100) timeBar.className = 'stat-bar-fill danger';
-    else if (pct >= 50) timeBar.className = 'stat-bar-fill warn';
-    else timeBar.className = 'stat-bar-fill';
+    serverTotalSec = data.totalSeconds || 0;
+    limitSec       = data.limitSeconds || 7200;
+    renderTotal();
 
     statusDot.classList.add('active');
     statusText.textContent = 'Monitoring active';
@@ -125,6 +142,19 @@ async function loadStats(token, userId) {
     statusText.textContent = 'Could not load stats';
   }
 }
+
+// Listen for live session updates from content.js (writes every second when playing)
+chrome.storage.onChanged.addListener((changes) => {
+  if (changes.fg_live_session) {
+    liveSessionSec = changes.fg_live_session.newValue?.seconds || 0;
+    renderTotal();
+  }
+});
+
+// On popup open, also read the current live value once
+chrome.storage.local.get(['fg_live_session'], (r) => {
+  liveSessionSec = r.fg_live_session?.seconds || 0;
+});
 
 function showAlert(alert) {
   alertBanner.classList.remove('hidden', 'warning', 'danger');

@@ -103,7 +103,7 @@ async function classifyVideo(payload) {
     return { educational: true };
   }
 
-  console.log('[FocusGuard] POST /classify ←', payload);
+  console.log(`[FocusGuard] POST /classify ← "${payload.title}"`);
   try {
     const res = await fetch(`${API_BASE}/classify`, {
       method: 'POST',
@@ -114,7 +114,8 @@ async function classifyVideo(payload) {
       body: JSON.stringify(payload),
     });
     const data = await res.json();
-    console.log(`[FocusGuard] /classify → ${res.status}`, data);
+    const verdict = data.educational ? '📚 EDUCATIONAL' : '🎬 NON-EDU';
+    console.log(`[FocusGuard] /classify → ${res.status}  ${verdict}  (classification="${data.classification}")`);
     return data;
   } catch (e) {
     console.error('[FocusGuard] Classify error', e);
@@ -132,7 +133,7 @@ async function flushSession(payload) {
     return;
   }
 
-  console.log('[FocusGuard] POST /session ←', payload);
+  console.log(`[FocusGuard] POST /session ← ${payload.durationSeconds}s of "${payload.videoTitle}"`);
   try {
     const res = await fetch(`${API_BASE}/session`, {
       method: 'POST',
@@ -143,7 +144,7 @@ async function flushSession(payload) {
       body: JSON.stringify({ ...payload, userId }),
     });
     const data = await res.json();
-    console.log(`[FocusGuard] /session → ${res.status}`, data);
+    console.log(`[FocusGuard] /session → ${res.status}  sessionId=${data.sessionId || data.message || 'OK'}`);
   } catch (e) {
     console.error('[FocusGuard] Session flush error', e);
   }
