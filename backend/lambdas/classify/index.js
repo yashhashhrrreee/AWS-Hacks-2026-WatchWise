@@ -18,14 +18,36 @@ exports.handler = async (event) => {
 
   if (!title) return respond(400, { message: 'title is required' });
 
-  const prompt = `You are classifying YouTube videos to determine if they are educational or non-educational.
+  const prompt = `You classify YouTube videos as either "educational" or "noneducational" for a study-focus app.
+
+A video is "educational" ONLY if it primarily teaches a specific academic, technical, or skill-based subject. Examples:
+- University-style lectures (math, physics, history, philosophy, etc.)
+- Programming tutorials, software engineering content
+- Language learning lessons
+- Science explainers (3Blue1Brown, Veritasium, Kurzgesagt, Khan Academy)
+- Documentaries about real-world subjects
+- Step-by-step how-to instruction with technical depth
+- Test/exam prep content
+- Professional skill tutorials (design, music theory, etc.)
+
+EVERYTHING ELSE is "noneducational", including:
+- Music videos, songs, concerts, music performances (Gangnam Style, Taylor Swift, etc.)
+- Vlogs, daily life, lifestyle, "day in my life"
+- Comedy, sketches, reaction videos, prank videos
+- Gaming, gameplay, Let's Plays, esports
+- Sports highlights, fitness without structured instruction
+- News, politics, talk shows, podcasts (unless explicitly academic)
+- Movie trailers, TV clips, anime, celebrity content
+- Memes, shorts, viral clips, compilations
+- Travel vlogs, food vlogs
+- Marble races, ASMR, satisfying videos, animations for entertainment
+- Product unboxings, hauls, casual reviews
+
+Default to "noneducational" if uncertain. Music videos, marble races, and entertainment are ALWAYS "noneducational".
 
 Video Title: ${title}
 Creator: ${creator}
 Description: ${description.slice(0, 400)}
-
-What would you classify this as? educational or noneducational.
-In terms of someone watching this video, do you think they are studying academically or doing something non-academic?
 
 Respond with ONLY a JSON object in this exact format, nothing else:
 {"classification": "educational"} or {"classification": "noneducational"}`;

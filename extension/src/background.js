@@ -98,7 +98,12 @@ function showAlertPopup(data) {
 
 async function classifyVideo(payload) {
   const token = await getToken();
-  if (!token) return { educational: true }; // fail safe if not authed
+  if (!token) {
+    console.warn('[FocusGuard] classifyVideo: no token, defaulting to educational');
+    return { educational: true };
+  }
+
+  console.log('[FocusGuard] classifyVideo POST /classify', payload);
 
   try {
     const res = await fetch(`${API_BASE}/classify`, {
@@ -109,7 +114,9 @@ async function classifyVideo(payload) {
       },
       body: JSON.stringify(payload),
     });
-    return await res.json();
+    const data = await res.json();
+    console.log('[FocusGuard] /classify response:', res.status, data);
+    return data;
   } catch (e) {
     console.error('[FocusGuard] Classify error', e);
     return { educational: true };
@@ -121,17 +128,26 @@ async function classifyVideo(payload) {
 async function flushSession(payload) {
   const token = await getToken();
   const userId = await getUserId();
-  if (!token || !userId) return;
+  console.log('[FocusGuard] flushSession called', { hasToken: !!token, userId, payload });
+  if (!token || !userId) {
+    console.warn('[FocusGuard] flushSession aborting — missing token or userId');
+    return;
+  }
+
+  const body = { ...payload, userId };
+  console.log('[FocusGuard] POST /session body:', body);
 
   try {
-    await fetch(`${API_BASE}/session`, {
+    const res = await fetch(`${API_BASE}/session`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify({ ...payload, userId }),
+      body: JSON.stringify(body),
     });
+    const text = await res.text();
+    console.log('[FocusGuard] /session response:', res.status, text);
   } catch (e) {
     console.error('[FocusGuard] Session flush error', e);
   }

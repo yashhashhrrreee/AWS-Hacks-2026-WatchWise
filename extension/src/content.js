@@ -55,9 +55,16 @@
   }
 
   function flushSession() {
-    if (!isNonEducational || sessionSeconds < 1) return;
+    console.log('[FocusGuard content] flushSession called', {
+      isNonEducational, sessionSeconds, currentVideoId
+    });
+    if (!isNonEducational || sessionSeconds < 1) {
+      console.log('[FocusGuard content] flushSession SKIPPED (not non-edu or 0 seconds)');
+      return;
+    }
 
     const meta = getMetadata();
+    console.log('[FocusGuard content] sending FLUSH_SESSION', meta);
     chrome.runtime.sendMessage({
       type: 'FLUSH_SESSION',
       payload: {
@@ -109,16 +116,22 @@
     const meta = getMetadata();
     if (!meta.title) return;
 
+    console.log('[FocusGuard content] sending CLASSIFY_VIDEO', meta);
     chrome.runtime.sendMessage(
       {
         type: 'CLASSIFY_VIDEO',
         payload: meta
       },
       (response) => {
-        if (chrome.runtime.lastError) return;
+        if (chrome.runtime.lastError) {
+          console.warn('[FocusGuard content] sendMessage error:', chrome.runtime.lastError);
+          return;
+        }
+        console.log('[FocusGuard content] classify response:', response);
         if (response && response.educational === false) {
           isNonEducational = true;
           const video = getVideoElement();
+          console.log('[FocusGuard content] marked NON-EDU, video paused?', video?.paused);
           if (video && !video.paused) startTimer();
         }
       }
