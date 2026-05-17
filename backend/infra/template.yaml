@@ -156,6 +156,23 @@ Resources:
             Path: /session
             Method: POST
 
+  SetLimitFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: focusguard-set-limit
+      CodeUri: lambdas/
+      Handler: set-limit/index.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UsersTable
+      Events:
+        SetLimit:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /limit
+            Method: PUT
+
   StatsFunction:
     Type: AWS::Serverless::Function
     Properties:
