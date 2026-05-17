@@ -1,8 +1,7 @@
-// popup.js
+// popup.js - FocusGuard
 
 const API_BASE = 'https://d85j77xztl.execute-api.us-east-2.amazonaws.com';
 
-// ── Elements ──────────────────────────────────────────────────────────────────
 const authScreen = document.getElementById('auth-screen');
 const dashScreen = document.getElementById('dashboard-screen');
 const authForm   = document.getElementById('auth-form');
@@ -10,18 +9,43 @@ const authBtn    = document.getElementById('auth-btn');
 const authError  = document.getElementById('auth-error');
 const tabs       = document.querySelectorAll('.tab');
 
-const timeUsed   = document.getElementById('time-used');
-const timeBar    = document.getElementById('time-bar');
-const timeLimit  = document.getElementById('time-limit');
-const statusDot  = document.getElementById('status-dot');
-const statusText = document.getElementById('status-text');
-const alertBanner = document.getElementById('alert-banner');
-const alertIcon  = document.getElementById('alert-icon');
-const alertTextEl = document.getElementById('alert-text');
+const scoreNum        = document.getElementById('score-num');
+const dotRow          = document.getElementById('dot-row');
+const goalsCaption    = document.getElementById('goals-caption');
 
-let currentTab = 'login';
+const eduValueEl      = document.getElementById('edu-value');
+const eduBarEl        = document.getElementById('edu-bar');
+const entValueEl      = document.getElementById('ent-value');
+const entLimitEl      = document.getElementById('ent-limit');
+const entBarEl        = document.getElementById('ent-bar');
+const entRemainingEl  = document.getElementById('ent-remaining');
 
-// ── Tab switching ─────────────────────────────────────────────────────────────
+const warningModal    = document.getElementById('warning-modal');
+const warningClose    = document.getElementById('warning-close');
+const warningAck      = document.getElementById('warning-ack');
+const warnPctEl       = document.getElementById('warn-pct');
+const warnRemainingEl = document.getElementById('warn-remaining-value');
+const warnBarEl       = document.getElementById('warn-bar');
+
+const blockModal      = document.getElementById('block-modal');
+const blockClose      = document.getElementById('block-close');
+const blockLimitLabel = document.getElementById('block-limit-label');
+const achievementEl   = document.getElementById('achievement-value');
+const resetCountdown  = document.getElementById('reset-countdown');
+
+let currentTab     = 'login';
+let serverTotalSec = 0;
+let serverEduSec   = 0;
+let limitSec       = 7200;
+let liveSessionSec = 0;
+let livePlaying    = false;    // is a non-edu video currently playing
+let liveLastTs     = 0;        // ms timestamp of last update from content.js
+let statsRefreshInterval = null;
+let smoothTickInterval   = null;
+
+let warningDismissedToday  = false;
+let blockDismissedThisOpen = false;
+
 tabs.forEach(tab => {
   tab.addEventListener('click', () => {
     tabs.forEach(t => t.classList.remove('active'));
@@ -32,11 +56,10 @@ tabs.forEach(tab => {
   });
 });
 
-// ── Auth form submit ──────────────────────────────────────────────────────────
 authForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   authError.classList.add('hidden');
-  authBtn.textContent = 'Loading…';
+  authBtn.textContent = 'Loading...';
   authBtn.disabled = true;
 
   const email    = document.getElementById('email').value.trim();
@@ -52,10 +75,7 @@ authForm.addEventListener('submit', async (e) => {
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Auth failed');
 
-    // Save to extension storage
     await chrome.storage.local.set({ fg_token: data.token, fg_userId: data.userId });
-
-    // Notify background to connect WebSocket
     chrome.runtime.sendMessage({ type: 'AUTH_SUCCESS' });
 
     showDashboard(data.userId);
@@ -67,37 +87,41 @@ authForm.addEventListener('submit', async (e) => {
   }
 });
 
-// ── Logout ────────────────────────────────────────────────────────────────────
-document.getElementById('logout-btn').addEventListener('click', async () => {
-  clearInterval(statsRefreshInterval);
-  await chrome.storage.local.remove(['fg_token', 'fg_userId', 'fg_pending_alert']);
-  chrome.runtime.sendMessage({ type: 'LOGOUT' });
-  dashScreen.classList.add('hidden');
-  authScreen.classList.remove('hidden');
-});
-
-// ── Dashboard ─────────────────────────────────────────────────────────────────
-let statsRefreshInterval = null;
-
-async function showDashboard(userId) {
-  authScreen.classList.add('hidden');
-  dashScreen.classList.remove('hidden');
-
-  // Check for pending alert from WebSocket
-  const storage = await chrome.storage.local.get(['fg_pending_alert', 'fg_token']);
-  if (storage.fg_pending_alert) {
-    showAlert(storage.fg_pending_alert);
-    chrome.storage.local.remove('fg_pending_alert');
-  }
-
-  // Fetch server total once, then sync every 15s to catch flushed sessions
-  // (Smooth 1s tick comes from content.js → chrome.storage live updates)
-  if (storage.fg_token) {
-    loadStats(storage.fg_token, userId);
+const logoutBtn = document.getElementById('logout-btn');
+if (logoutBtn) {
+  logoutBtn.addEventListener('click', async () => {
     clearInterval(statsRefreshInterval);
-    statsRefreshInterval = setInterval(() => loadStats(storage.fg_token, userId), 15000);
-  }
+    stopSmoothTick();
+    await chrome.storage.local.remove(['fg_token', 'fg_userId', 'fg_pending_alert']);
+    chrome.runtime.sendMessage({ type: 'LOGOUT' });
+    dashScreen.classList.add('hidden');
+    authScreen.classList.remove('hidden');
+  });
 }
+
+function todayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+async function dismissWarning() {
+  warningDismissedToday = true;
+  if (warningModal) warningModal.classList.add('hidden');
+  await chrome.storage.local.set({ fg_warning_dismissed_date: todayKey() });
+}
+
+function dismissBlock() {
+  blockDismissedThisOpen = true;
+  if (blockModal) blockModal.classList.add('hidden');
+}
+
+if (warningClose) warningClose.addEventListener('click', dismissWarning);
+if (warningAck)   warningAck.addEventListener('click', dismissWarning);
+if (blockClose)   blockClose.addEventListener('click', dismissBlock);
+
+const warnBackdrop  = warningModal && warningModal.querySelector('.modal-backdrop');
+const blockBackdrop = blockModal   && blockModal.querySelector('.modal-backdrop');
+if (warnBackdrop)  warnBackdrop.addEventListener('click', dismissWarning);
+if (blockBackdrop) blockBackdrop.addEventListener('click', dismissBlock);
 
 function formatHMS(totalSeconds) {
   const s = Math.max(0, Math.floor(totalSeconds || 0));
@@ -108,21 +132,66 @@ function formatHMS(totalSeconds) {
   return `${pad(h)}:${pad(m)}:${pad(sec)}`;
 }
 
-let serverTotalSec = 0;
-let limitSec       = 7200;
-let liveSessionSec = 0;
+function formatHoursShort(totalSeconds) {
+  const h = Math.round((totalSeconds || 0) / 3600);
+  return `${h}hr`;
+}
 
-function renderTotal() {
-  const used = serverTotalSec + liveSessionSec;
-  const pct  = Math.min(100, Math.round((used / limitSec) * 100));
+function timeUntilMidnight() {
+  const now = new Date();
+  const midnight = new Date(now);
+  midnight.setHours(24, 0, 0, 0);
+  const diffSec = Math.floor((midnight - now) / 1000);
+  return formatHMS(diffSec);
+}
 
-  timeUsed.textContent  = formatHMS(used);
-  timeLimit.textContent = `of ${formatHMS(limitSec)} limit`;
-  timeBar.style.width   = `${pct}%`;
+function render() {
+  const usedSec      = serverTotalSec + liveSessionSec;
+  const remainingSec = Math.max(0, limitSec - usedSec);
+  const entPct       = limitSec > 0 ? Math.min(100, Math.round((usedSec / limitSec) * 100)) : 0;
+  const eduPct       = limitSec > 0 ? Math.min(100, Math.round((serverEduSec / limitSec) * 100)) : 0;
 
-  if (pct >= 100) timeBar.className = 'stat-bar-fill danger';
-  else if (pct >= 50) timeBar.className = 'stat-bar-fill warn';
-  else timeBar.className = 'stat-bar-fill';
+  if (eduValueEl)     eduValueEl.textContent = formatHMS(serverEduSec);
+  if (eduBarEl)       eduBarEl.style.width = `${eduPct}%`;
+
+  if (entValueEl)     entValueEl.textContent = formatHMS(usedSec);
+  if (entLimitEl)     entLimitEl.textContent = formatHMS(limitSec);
+  if (entBarEl)       entBarEl.style.width = `${entPct}%`;
+  if (entRemainingEl) entRemainingEl.textContent = `${formatHMS(remainingSec)} remaining`;
+
+  if (scoreNum) scoreNum.textContent = String(Math.max(0, 100 - entPct));
+
+  if (dotRow) {
+    const filledGreen = Math.max(0, 5 - Math.ceil(entPct / 20));
+    const orangeDot   = entPct >= 80 && entPct < 100 ? 1 : 0;
+    const redDot      = entPct >= 100 ? 1 : 0;
+    let html = '';
+    for (let i = 0; i < filledGreen; i++) html += '<span class="dot dot-green"></span>';
+    for (let i = 0; i < orangeDot; i++)   html += '<span class="dot dot-orange"></span>';
+    for (let i = 0; i < redDot; i++)      html += '<span class="dot dot-red"></span>';
+    while (html.split('<span').length - 1 < 5) html += '<span class="dot dot-dim"></span>';
+    dotRow.innerHTML = html;
+    if (goalsCaption) goalsCaption.textContent = `${filledGreen} of 5 goals hit`;
+  }
+
+  if (warnPctEl)       warnPctEl.textContent = String(entPct);
+  if (warnRemainingEl) warnRemainingEl.textContent = formatHMS(remainingSec);
+  if (warnBarEl)       warnBarEl.style.width = `${entPct}%`;
+
+  if (blockLimitLabel) blockLimitLabel.textContent = formatHoursShort(limitSec);
+  if (achievementEl)   achievementEl.textContent = formatHMS(serverEduSec);
+  if (resetCountdown)  resetCountdown.textContent = `Resets in ${timeUntilMidnight()}`;
+
+  if (entPct >= 100 && !blockDismissedThisOpen) {
+    if (blockModal)   blockModal.classList.remove('hidden');
+    if (warningModal) warningModal.classList.add('hidden');
+  } else if (entPct >= 50 && entPct < 100 && !warningDismissedToday) {
+    if (warningModal) warningModal.classList.remove('hidden');
+    if (blockModal)   blockModal.classList.add('hidden');
+  } else {
+    if (warningModal) warningModal.classList.add('hidden');
+    if (blockModal)   blockModal.classList.add('hidden');
+  }
 }
 
 async function loadStats(token, userId) {
@@ -134,41 +203,86 @@ async function loadStats(token, userId) {
 
     serverTotalSec = data.totalSeconds || 0;
     limitSec       = data.limitSeconds || 7200;
-    renderTotal();
+    if (typeof data.educationalSeconds === 'number') serverEduSec = data.educationalSeconds;
 
-    statusDot.classList.add('active');
-    statusText.textContent = 'Monitoring active';
-  } catch {
-    statusText.textContent = 'Could not load stats';
+    render();
+  } catch (err) {
+    console.warn('[FocusGuard] stats fetch failed', err);
   }
 }
 
-// Listen for live session updates from content.js (writes every second when playing)
 chrome.storage.onChanged.addListener((changes) => {
   if (changes.fg_live_session) {
-    liveSessionSec = changes.fg_live_session.newValue?.seconds || 0;
-    renderTotal();
+    const v = changes.fg_live_session.newValue || {};
+    liveSessionSec = v.seconds || 0;
+    livePlaying    = !!v.playing;
+    liveLastTs     = v.ts || Date.now();
+    render();
+  }
+  if (changes.fg_pending_alert?.newValue) {
+    const alert = changes.fg_pending_alert.newValue;
+    if (alert.level === 'hard') blockDismissedThisOpen = false;
+    else                        warningDismissedToday = false;
+    render();
   }
 });
 
-// On popup open, also read the current live value once
-chrome.storage.local.get(['fg_live_session'], (r) => {
-  liveSessionSec = r.fg_live_session?.seconds || 0;
-});
-
-function showAlert(alert) {
-  alertBanner.classList.remove('hidden', 'warning', 'danger');
-  if (alert.level === 'hard') {
-    alertBanner.classList.add('danger');
-    alertIcon.textContent = '🚨';
-  } else {
-    alertBanner.classList.add('warning');
-    alertIcon.textContent = '⏰';
-  }
-  alertTextEl.textContent = alert.message;
+// Local 1-second tick: while a video is playing, bump the live counter
+// locally so the UI stays smooth even if storage events arrive late.
+// The next real storage update from content.js will snap us back into sync.
+function startSmoothTick() {
+  if (smoothTickInterval) return;
+  smoothTickInterval = setInterval(() => {
+    if (livePlaying) {
+      // Only tick locally if we haven't heard from content.js in the last 1.5s
+      // (otherwise content.js's own tick is doing the job).
+      const sinceLast = Date.now() - liveLastTs;
+      if (sinceLast > 1500) {
+        liveSessionSec += 1;
+      }
+    }
+    render();
+  }, 1000);
 }
 
-// ── Init ──────────────────────────────────────────────────────────────────────
+function stopSmoothTick() {
+  if (smoothTickInterval) {
+    clearInterval(smoothTickInterval);
+    smoothTickInterval = null;
+  }
+}
+
+async function showDashboard(userId) {
+  authScreen.classList.add('hidden');
+  dashScreen.classList.remove('hidden');
+
+  const storage = await chrome.storage.local.get([
+    'fg_pending_alert', 'fg_token', 'fg_live_session', 'fg_warning_dismissed_date'
+  ]);
+
+  warningDismissedToday = storage.fg_warning_dismissed_date === todayKey();
+  blockDismissedThisOpen = false;
+
+  const liveInit = storage.fg_live_session || {};
+  liveSessionSec = liveInit.seconds || 0;
+  livePlaying    = !!liveInit.playing;
+  liveLastTs     = liveInit.ts || 0;
+  startSmoothTick();
+
+  if (storage.fg_pending_alert) {
+    chrome.storage.local.remove('fg_pending_alert');
+  }
+
+  if (storage.fg_token) {
+    loadStats(storage.fg_token, userId);
+    clearInterval(statsRefreshInterval);
+    statsRefreshInterval = setInterval(
+      () => loadStats(storage.fg_token, userId),
+      15000
+    );
+  }
+}
+
 (async () => {
   const { fg_token, fg_userId } = await chrome.storage.local.get(['fg_token', 'fg_userId']);
   if (fg_token && fg_userId) {

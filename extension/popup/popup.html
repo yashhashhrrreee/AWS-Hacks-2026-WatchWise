@@ -8,10 +8,19 @@
 </head>
 <body>
 
-  <!-- Auth Screen -->
+  <!-- Decorative background orbs -->
+  <div class="orb orb-purple-tl"></div>
+  <div class="orb orb-blue-br"></div>
+
+  <!-- ═════════════════════════════════════════════════════════════════════
+       AUTH SCREEN
+       ═════════════════════════════════════════════════════════════════════ -->
   <div id="auth-screen" class="screen">
-    <div class="logo">
-      <span class="logo-icon">🎯</span>
+    <div class="auth-logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" class="auth-icon">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        <path d="m9 12 2 2 4-4"/>
+      </svg>
       <h1>FocusGuard</h1>
       <p class="tagline">Stay on track.</p>
     </div>
@@ -35,35 +44,205 @@
     </form>
   </div>
 
-  <!-- Dashboard Screen -->
+  <!-- ═════════════════════════════════════════════════════════════════════
+       DASHBOARD — Main view always shown
+       ═════════════════════════════════════════════════════════════════════ -->
   <div id="dashboard-screen" class="screen hidden">
 
-    <!-- Alert banner (shown when WS alert is pending) -->
-    <div id="alert-banner" class="alert-banner hidden">
-      <span id="alert-icon"></span>
-      <span id="alert-text"></span>
-    </div>
-
-    <div class="dashboard-header">
-      <span class="logo-icon">🎯</span>
-      <span class="dash-title">FocusGuard</span>
-      <button id="logout-btn" class="btn-ghost">Logout</button>
-    </div>
-
-    <div class="stat-card">
-      <div class="stat-label">Non-Academic Time Today</div>
-      <div class="stat-value" id="time-used">00:00:00</div>
-      <div class="stat-bar-bg">
-        <div class="stat-bar-fill" id="time-bar" style="width: 0%"></div>
+    <!-- Header -->
+    <div class="header-row">
+      <div class="brand">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="icon-14">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <path d="m9 12 2 2 4-4"/>
+        </svg>
+        <span>FocusGuard</span>
       </div>
-      <div class="stat-limit" id="time-limit">of 02:00:00 limit</div>
+      <button class="icon-btn" id="logout-btn" title="Logout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="icon-14">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+      </button>
     </div>
 
-    <div class="status-row">
-      <div class="status-dot" id="status-dot"></div>
-      <span id="status-text">Monitoring paused</span>
+    <!-- Score card -->
+    <div class="glass card score-card">
+      <div class="score-ring">
+        <div class="score-num" id="score-num">100</div>
+        <div class="score-label">score</div>
+      </div>
+      <div class="score-meta">
+        <div class="score-meta-label">Today's breakdown</div>
+        <div class="dot-row" id="dot-row">
+          <span class="dot dot-green"></span>
+          <span class="dot dot-green"></span>
+          <span class="dot dot-green"></span>
+          <span class="dot dot-green"></span>
+          <span class="dot dot-green"></span>
+        </div>
+        <div class="score-meta-caption" id="goals-caption">5 of 5 goals hit</div>
+      </div>
     </div>
 
+    <!-- Time tracker -->
+    <div class="glass card">
+      <!-- Educational row -->
+      <div class="time-row">
+        <div class="time-row-left">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="icon-14 icon-green">
+            <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+            <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+          </svg>
+          <span>Educational</span>
+        </div>
+        <span class="time-value time-green" id="edu-value">00:00:00</span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill bar-edu" id="edu-bar" style="width: 0%"></div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Entertainment row -->
+      <div class="time-row">
+        <div class="time-row-left">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="icon-14 icon-orange">
+            <line x1="6" y1="11" x2="10" y2="11"/>
+            <line x1="8" y1="9"  x2="8"  y2="13"/>
+            <line x1="15" y1="12" x2="15.01" y2="12"/>
+            <line x1="18" y1="10" x2="18.01" y2="10"/>
+            <path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258A4 4 0 0 0 17.32 5z"/>
+          </svg>
+          <span>Entertainment</span>
+        </div>
+        <span class="time-value time-orange">
+          <span id="ent-value">00:00:00</span>
+          <span class="time-divider"> / </span>
+          <span id="ent-limit">02:00:00</span>
+        </span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill bar-ent" id="ent-bar" style="width: 0%"></div>
+      </div>
+      <div class="time-caption" id="ent-remaining">02:00:00 remaining</div>
+    </div>
+
+    <!-- Bottom bar -->
+    <div class="glass-sm bottom-bar">
+      <div class="bottom-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="icon-14 icon-orange">
+          <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
+        </svg>
+        <span>3-day streak</span>
+      </div>
+      <div class="bottom-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="icon-14">
+          <line x1="18" y1="20" x2="18" y2="10"/>
+          <line x1="12" y1="20" x2="12" y2="4"/>
+          <line x1="6"  y1="20" x2="6"  y2="14"/>
+        </svg>
+        <span>Weekly report</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════════════════════════════════════════════════════════════════════
+       WARNING MODAL — overlays Main when entPct >= 50
+       ═════════════════════════════════════════════════════════════════════ -->
+  <div id="warning-modal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <button class="modal-close" id="warning-close" title="Dismiss">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-14">
+          <line x1="18" y1="6"  x2="6"  y2="18"/>
+          <line x1="6"  y1="6"  x2="18" y2="18"/>
+        </svg>
+      </button>
+
+      <div class="orb orb-orange-tr"></div>
+      <div class="orb orb-purple-bl"></div>
+
+      <div class="state-icon state-icon-warn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="icon-22">
+          <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9"  x2="12" y2="13"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+      </div>
+
+      <div class="text-block">
+        <h2 class="state-title">Heads up</h2>
+        <p class="state-body">You've used <span id="warn-pct">50</span>% of your entertainment budget today</p>
+      </div>
+
+      <div class="glass card remaining-card">
+        <div class="remaining-label">Entertainment remaining</div>
+        <div class="remaining-value" id="warn-remaining-value">01:00:00</div>
+        <div class="bar-track">
+          <div class="bar-fill bar-ent" id="warn-bar" style="width: 50%"></div>
+        </div>
+      </div>
+
+      <button class="action-btn glass-sm action-purple" id="warning-ack">
+        <span>Got it</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═════════════════════════════════════════════════════════════════════
+       BLOCK MODAL — overlays Main when entPct >= 100
+       ═════════════════════════════════════════════════════════════════════ -->
+  <div id="block-modal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <button class="modal-close" id="block-close" title="Dismiss">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-14">
+          <line x1="18" y1="6"  x2="6"  y2="18"/>
+          <line x1="6"  y1="6"  x2="18" y2="18"/>
+        </svg>
+      </button>
+
+      <div class="orb orb-red-tl"></div>
+      <div class="orb orb-purple-br"></div>
+
+      <div class="state-icon state-icon-block">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="icon-22">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+      </div>
+
+      <div class="text-block">
+        <h2 class="state-title">Entertainment limit hit</h2>
+        <p class="state-body">Your <span id="block-limit-label">2hr</span> cap for today is done. Reset at midnight.</p>
+      </div>
+
+      <div class="glass card achievement-card">
+        <div class="achievement-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="icon-12">
+            <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+            <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+            <path d="M4 22h16"/>
+            <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
+            <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
+            <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
+          </svg>
+          <span>What you learned today</span>
+        </div>
+        <div class="achievement-value" id="achievement-value">00:00:00</div>
+        <div class="achievement-caption">of educational content</div>
+      </div>
+
+      <div class="reset-row">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="icon-12">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12 6 12 12 16 14"/>
+        </svg>
+        <span id="reset-countdown">Resets at midnight</span>
+      </div>
+    </div>
   </div>
 
   <script src="popup.js"></script>
