@@ -265,6 +265,25 @@ Resources:
       DeploymentId: !Ref WebSocketDeployment
       StageName: prod
 
+# ── Daily Reset (EventBridge Scheduler → Lambda) ─────────────────────────────
+
+  DailyResetFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: focusguard-daily-reset
+      CodeUri: lambdas/
+      Handler: daily-reset/index.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DailyTotalsTable
+      Events:
+        MidnightReset:
+          Type: Schedule
+          Properties:
+            Schedule: cron(0 0 * * ? *)
+            Description: Delete stale fg_daily_totals rows at midnight UTC
+            Enabled: true
+
 # ── DynamoDB Streams → Lambda ─────────────────────────────────────────────────
 
   StreamProcessorFunction:
