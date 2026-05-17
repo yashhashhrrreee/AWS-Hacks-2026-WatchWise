@@ -68,6 +68,7 @@ function handleAlert(alertType, totalSeconds, limitSeconds) {
       title: '⏰ Halfway Through Your Limit',
       message: `You've used ${totalMin} of ${limitMin} minutes of non-academic video time today.`,
     });
+    injectToastToYouTubeTabs({ type: 'SHOW_WARNING_TOAST', totalMin, limitMin });
   } else if (alertType === '100%') {
     showAlertPopup({
       level: 'hard',
@@ -93,6 +94,15 @@ function showAlertPopup(data) {
 
   // Open the extension popup programmatically if possible
   // (MV3 limitation: can only open popup via user gesture, so we rely on notification)
+}
+
+// ── In-page toast injection ───────────────────────────────────────────────────
+
+async function injectToastToYouTubeTabs(message) {
+  const tabs = await chrome.tabs.query({ url: '*://*.youtube.com/*' });
+  for (const tab of tabs) {
+    chrome.tabs.sendMessage(tab.id, message).catch(() => {});
+  }
 }
 
 // ── Block mode injection ──────────────────────────────────────────────────────
