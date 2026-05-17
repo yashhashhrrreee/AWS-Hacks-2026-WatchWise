@@ -65,17 +65,15 @@
 
   function publishLive() {
     if (!contextAlive()) { teardown(); return; }
-    try {
-      chrome.storage.local.set({
-        fg_live_session: {
-          seconds: sessionSeconds,
-          playing: !!timerInterval,
-          eduSeconds: eduSessionSeconds,
-          eduPlaying: !!eduTimerInterval,
-          ts: Date.now()
-        }
-      });
-    } catch { teardown(); }
+    chrome.storage.local.set({
+      fg_live_session: {
+        seconds: sessionSeconds,
+        playing: !!timerInterval,
+        eduSeconds: eduSessionSeconds,
+        eduPlaying: !!eduTimerInterval,
+        ts: Date.now()
+      }
+    }).catch(() => teardown());
   }
 
   function startTimer() {
@@ -136,7 +134,7 @@
             durationSeconds: sessionSeconds,
             classification: 'noneducational',
           }
-        });
+        }, () => void chrome.runtime.lastError);
       } catch { teardown(); return; }
       sessionSeconds = 0;
       publishLive();
@@ -155,7 +153,7 @@
             durationSeconds: eduSessionSeconds,
             classification: 'educational',
           }
-        });
+        }, () => void chrome.runtime.lastError);
       } catch { teardown(); return; }
       eduSessionSeconds = 0;
       publishLive();
