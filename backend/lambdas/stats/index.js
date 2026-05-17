@@ -24,7 +24,7 @@ exports.handler = async (event) => {
       ddb.send(new GetItemCommand({
         TableName: USERS_TABLE,
         Key: { userId: { S: userId } },
-        ProjectionExpression: 'dailyLimitSeconds',
+        ProjectionExpression: 'dailyLimitSeconds, studyGoalSeconds, limitChangedAt',
       })),
       ddb.send(new GetItemCommand({
         TableName: DAILY_TOTALS_TABLE,
@@ -33,10 +33,12 @@ exports.handler = async (event) => {
     ]);
 
     const limitSeconds        = parseInt(userRow.Item?.dailyLimitSeconds?.N || '7200', 10);
+    const studyGoalSeconds    = parseInt(userRow.Item?.studyGoalSeconds?.N  || '7200', 10);
+    const limitChangedAt      = userRow.Item?.limitChangedAt?.S || null;
     const totalSeconds        = parseInt(totalRow.Item?.totalSeconds?.N || '0', 10);
     const educationalSeconds  = parseInt(totalRow.Item?.educationalSeconds?.N || '0', 10);
 
-    return respond(200, { totalSeconds, limitSeconds, educationalSeconds, date: today });
+    return respond(200, { totalSeconds, limitSeconds, studyGoalSeconds, limitChangedAt, educationalSeconds, date: today });
   } catch (err) {
     console.error('stats error:', err);
     return respond(500, { message: 'Failed to load stats' });
