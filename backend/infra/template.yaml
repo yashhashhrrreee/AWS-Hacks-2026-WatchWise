@@ -284,6 +284,38 @@ Resources:
             Description: Delete stale fg_daily_totals rows at midnight UTC
             Enabled: true
 
+# ── Weekly Summary Email (EventBridge → Lambda) ───────────────────────────────
+
+  WeeklySummaryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: focusguard-weekly-summary
+      CodeUri: lambdas/
+      Handler: weekly-summary/index.handler
+      Timeout: 120
+      Environment:
+        Variables:
+          SES_REGION: !Ref AWS::Region
+          SES_FROM_EMAIL: !Sub 'noreply@${AWS::AccountId}.watchwise.app'
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref UsersTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref DailyTotalsTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - ses:SendEmail
+                - ses:SendRawEmail
+              Resource: '*'
+      Events:
+        WeeklySundayEmail:
+          Type: Schedule
+          Properties:
+            Schedule: cron(0 8 ? * SUN *)
+            Description: Send weekly summary emails every Sunday at 8am UTC
+            Enabled: true
+
 # ── DynamoDB Streams → Lambda ─────────────────────────────────────────────────
 
   StreamProcessorFunction:
