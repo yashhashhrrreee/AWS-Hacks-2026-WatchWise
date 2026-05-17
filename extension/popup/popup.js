@@ -237,7 +237,7 @@ function startSmoothTick() {
       // Only tick locally if we haven't heard from content.js in the last 1.5s
       // (otherwise content.js's own tick is doing the job).
       const sinceLast = Date.now() - liveLastTs;
-      if (sinceLast > 1500) {
+      if (sinceLast > 1200) {
         liveSessionSec += 1;
       }
     }
@@ -267,6 +267,7 @@ async function showDashboard(userId) {
   liveSessionSec = liveInit.seconds || 0;
   livePlaying    = !!liveInit.playing;
   liveLastTs     = liveInit.ts || 0;
+  render();
   startSmoothTick();
 
   if (storage.fg_pending_alert) {
