@@ -12,6 +12,7 @@
   let currentVideoId = null;
   let isNonEducational = false;
   let isEducational = false;
+  let isBlocked = false;
   let timerInterval = null;
   let sessionSeconds = 0;
   let eduTimerInterval = null;
@@ -78,6 +79,7 @@
 
   function startTimer() {
     if (timerInterval) return;
+    if (isBlocked) { showBlockOverlay(); return; }
     log('timer STARTED (non-educational video playing)');
     timerInterval = setInterval(() => {
       if (!contextAlive()) { teardown(); return; }
@@ -203,6 +205,12 @@
     sessionSeconds = 0;
     eduSessionSeconds = 0;
 
+    // Pause video during classification window if blocked so non-edu can't play
+    if (isBlocked) {
+      const videoEl = getVideoElement();
+      if (videoEl) videoEl.pause();
+    }
+
     await new Promise(r => setTimeout(r, 2000));
 
     if (!contextAlive()) return;
@@ -222,11 +230,17 @@
           log('classify RESPONSE:', response);
           if (response && response.educational === false) {
             isNonEducational = true;
+            if (isBlocked) {
+              showBlockOverlay();
+              return;
+            }
             const video = getVideoElement();
             if (video && !video.paused) startTimer();
           } else if (response && response.educational === true) {
             isEducational = true;
+            // Educational content — always allow even when entertainment limit hit
             const video = getVideoElement();
+            if (isBlocked && video) video.play().catch(() => {});
             if (video && !video.paused) startEduTimer();
           }
         }
@@ -335,9 +349,11 @@
   async function checkBlockOnLoad() {
     if (!contextAlive()) return;
     try {
-      const s = await chrome.storage.local.get(['fg_block_mode', 'fg_blocked_date']);
+      const s = await chrome.storage.local.get('fg_blocked_date');
       const today = new Date().toISOString().slice(0, 10);
-      if (s.fg_block_mode && s.fg_blocked_date === today) showBlockOverlay();
+      isBlocked = s.fg_blocked_date === today;
+      // If already classified as non-educational, block immediately
+      if (isBlocked && isNonEducational) showBlockOverlay();
     } catch { /* context gone */ }
   }
 
@@ -473,7 +489,11 @@
 
   // Listen for block injection from background
   chrome.runtime.onMessage.addListener((msg) => {
-    if (msg.type === 'SHOW_BLOCK_OVERLAY') showBlockOverlay();
+    if (msg.type === 'SHOW_BLOCK_OVERLAY') {
+      isBlocked = true;
+      // Only hard-block non-educational content; educational videos keep playing
+      if (!isEducational) showBlockOverlay();
+    }
     if (msg.type === 'SHOW_WARNING_TOAST')  showWarningToast(msg.totalMin, msg.limitMin);
   });
 

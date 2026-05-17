@@ -108,16 +108,13 @@ async function injectToastToYouTubeTabs(message) {
 // ── Block mode injection ──────────────────────────────────────────────────────
 
 async function maybeInjectBlock() {
-  const s = await chrome.storage.local.get('fg_block_mode');
-  if (!s.fg_block_mode) return;
-
   const today = new Date().toISOString().slice(0, 10);
   await chrome.storage.local.set({ fg_blocked_date: today });
 
   const tabs = await chrome.tabs.query({ url: '*://*.youtube.com/*' });
   for (const tab of tabs) {
     chrome.tabs.sendMessage(tab.id, { type: 'SHOW_BLOCK_OVERLAY' })
-      .catch(() => {}); // tab may not have content script
+      .catch(() => {});
   }
 }
 
