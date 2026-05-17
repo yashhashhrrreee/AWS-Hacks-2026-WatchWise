@@ -77,14 +77,47 @@ tabs.forEach(tab => {
   });
 });
 
+// ── Saved credentials ─────────────────────────────────────────────────────────
+
+const savedCredHint  = document.getElementById('saved-cred-hint');
+const savedCredEmail = document.getElementById('saved-cred-email');
+const forgetBtn      = document.getElementById('forget-btn');
+const rememberMe     = document.getElementById('remember-me');
+const emailInput     = document.getElementById('email');
+const passwordInput  = document.getElementById('password');
+
+async function loadSavedCreds() {
+  const { fg_saved_creds } = await chrome.storage.local.get('fg_saved_creds');
+  if (!fg_saved_creds) return;
+
+  emailInput.value    = fg_saved_creds.email    || '';
+  passwordInput.value = fg_saved_creds.password || '';
+  if (rememberMe) rememberMe.checked = true;
+
+  if (savedCredHint && savedCredEmail) {
+    savedCredEmail.textContent = fg_saved_creds.email;
+    savedCredHint.classList.remove('hidden');
+  }
+}
+
+if (forgetBtn) {
+  forgetBtn.addEventListener('click', async () => {
+    await chrome.storage.local.remove('fg_saved_creds');
+    if (emailInput)    emailInput.value    = '';
+    if (passwordInput) passwordInput.value = '';
+    if (rememberMe)    rememberMe.checked  = false;
+    if (savedCredHint) savedCredHint.classList.add('hidden');
+  });
+}
+
 authForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   authError.classList.add('hidden');
   authBtn.textContent = 'Loading...';
   authBtn.disabled = true;
 
-  const email    = document.getElementById('email').value.trim();
-  const password = document.getElementById('password').value;
+  const email    = emailInput.value.trim();
+  const password = passwordInput.value;
   const endpoint = currentTab === 'login' ? '/auth/login' : '/auth/signup';
 
   try {
@@ -97,8 +130,14 @@ authForm.addEventListener('submit', async (e) => {
     if (!res.ok) throw new Error(data.message || 'Auth failed');
 
     await chrome.storage.local.set({ fg_token: data.token, fg_userId: data.userId });
-    chrome.runtime.sendMessage({ type: 'AUTH_SUCCESS' });
 
+    if (rememberMe?.checked) {
+      await chrome.storage.local.set({ fg_saved_creds: { email, password } });
+    } else {
+      await chrome.storage.local.remove('fg_saved_creds');
+    }
+
+    chrome.runtime.sendMessage({ type: 'AUTH_SUCCESS' });
     showDashboard(data.userId);
   } catch (err) {
     authError.textContent = err.message;
@@ -587,5 +626,7 @@ async function showDashboard(userId) {
   const { fg_token, fg_userId } = await chrome.storage.local.get(['fg_token', 'fg_userId']);
   if (fg_token && fg_userId) {
     showDashboard(fg_userId);
+  } else {
+    loadSavedCreds();
   }
 })();

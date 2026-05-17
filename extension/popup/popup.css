@@ -189,6 +189,48 @@ html, body {
 .btn-primary:hover { background: rgba(127, 119, 221, 0.5); }
 .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
 
+.saved-cred-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(127, 119, 221, 0.1);
+  border: 1px solid rgba(127, 119, 221, 0.25);
+  border-radius: var(--r-sm);
+  padding: 7px 10px;
+  margin-bottom: 12px;
+  font-size: 11px;
+  color: var(--purple-text);
+}
+.saved-cred-hint svg { flex-shrink: 0; color: var(--purple-text); }
+#saved-cred-email { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.forget-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 10px;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  white-space: nowrap;
+}
+.forget-btn:hover { color: var(--red); }
+
+.remember-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.remember-row input[type="checkbox"] {
+  accent-color: #7c6aff;
+  width: 13px;
+  height: 13px;
+  cursor: pointer;
+}
+.remember-row label { cursor: pointer; }
+
 .error {
   color: var(--red);
   font-size: 11px;

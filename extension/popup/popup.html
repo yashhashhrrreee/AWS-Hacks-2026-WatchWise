@@ -30,6 +30,16 @@
       <button class="tab" data-tab="signup">Sign Up</button>
     </div>
 
+    <!-- Saved credential hint -->
+    <div id="saved-cred-hint" class="saved-cred-hint hidden">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="icon-12">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+        <circle cx="12" cy="7" r="4"/>
+      </svg>
+      <span id="saved-cred-email"></span>
+      <button id="forget-btn" class="forget-btn">Forget</button>
+    </div>
+
     <form id="auth-form">
       <div class="field">
         <label for="email">Email</label>
@@ -38,6 +48,10 @@
       <div class="field">
         <label for="password">Password</label>
         <input type="password" id="password" placeholder="••••••••" required />
+      </div>
+      <div class="remember-row">
+        <input type="checkbox" id="remember-me" />
+        <label for="remember-me">Remember me</label>
       </div>
       <button type="submit" class="btn-primary" id="auth-btn">Login</button>
       <p id="auth-error" class="error hidden"></p>
