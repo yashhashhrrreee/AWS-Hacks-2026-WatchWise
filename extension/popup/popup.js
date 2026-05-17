@@ -91,6 +91,15 @@ async function showDashboard(userId) {
   if (storage.fg_token) loadStats(storage.fg_token, userId);
 }
 
+function formatHMS(totalSeconds) {
+  const s = Math.max(0, Math.floor(totalSeconds || 0));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${pad(h)}:${pad(m)}:${pad(sec)}`;
+}
+
 async function loadStats(token, userId) {
   try {
     const res = await fetch(`${API_BASE}/stats?userId=${encodeURIComponent(userId)}`, {
@@ -98,12 +107,12 @@ async function loadStats(token, userId) {
     });
     const data = await res.json();
 
-    const usedMin  = Math.round((data.totalSeconds || 0) / 60);
-    const limitMin = Math.round((data.limitSeconds || 7200) / 60);
-    const pct      = Math.min(100, Math.round(((data.totalSeconds || 0) / (data.limitSeconds || 7200)) * 100));
+    const usedSec  = data.totalSeconds || 0;
+    const limitSec = data.limitSeconds || 7200;
+    const pct      = Math.min(100, Math.round((usedSec / limitSec) * 100));
 
-    timeUsed.textContent  = `${usedMin} min`;
-    timeLimit.textContent = `of ${limitMin} min limit`;
+    timeUsed.textContent  = formatHMS(usedSec);
+    timeLimit.textContent = `of ${formatHMS(limitSec)} limit`;
     timeBar.style.width   = `${pct}%`;
 
     if (pct >= 100) timeBar.className = 'stat-bar-fill danger';
