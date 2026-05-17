@@ -627,6 +627,57 @@ html, body {
 .limit-save-msg.success { color: #86efac; }
 .limit-save-msg.error   { color: var(--red); }
 
+/* ── Weekly chart card ───────────────────────────────────────────────── */
+.week-chart-card { padding: 10px 12px 8px; }
+
+.week-chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.week-chart-title {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.week-chart-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 9px;
+  color: var(--text-muted);
+}
+.legend-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.legend-ent { background: #f97316; }
+.legend-edu { background: #a3e635; }
+.legend-txt { margin-right: 4px; }
+
+.week-chart-area {
+  width: 100%;
+  overflow: hidden;
+}
+.week-chart-days {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 4px;
+}
+.week-day-label {
+  font-size: 9px;
+  color: var(--text-muted);
+  text-align: center;
+  flex: 1;
+}
+.week-day-label.today {
+  color: var(--purple-text);
+  font-weight: 600;
+}
+
 /* ── Streak risk badge ───────────────────────────────────────────────── */
 .streak-risk {
   font-size: 9px;

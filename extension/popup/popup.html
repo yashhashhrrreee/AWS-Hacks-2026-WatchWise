@@ -178,14 +178,21 @@
         <span id="streak-label">0-day streak</span>
         <span id="streak-risk" class="streak-risk hidden" title="Study now to save your streak!">⚠ <span id="streak-grace-time"></span></span>
       </div>
-      <div class="bottom-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="icon-14">
-          <line x1="18" y1="20" x2="18" y2="10"/>
-          <line x1="12" y1="20" x2="12" y2="4"/>
-          <line x1="6"  y1="20" x2="6"  y2="14"/>
-        </svg>
-        <span>Weekly report</span>
+    </div>
+
+    <!-- Weekly chart card -->
+    <div class="glass card week-chart-card">
+      <div class="week-chart-header">
+        <span class="week-chart-title">This week</span>
+        <div class="week-chart-legend">
+          <span class="legend-dot legend-ent"></span><span class="legend-txt">Entertainment</span>
+          <span class="legend-dot legend-edu"></span><span class="legend-txt">Study</span>
+        </div>
       </div>
+      <div id="week-chart" class="week-chart-area">
+        <svg id="week-svg" width="100%" height="110" viewBox="0 0 268 110" preserveAspectRatio="none"></svg>
+      </div>
+      <div id="week-chart-days" class="week-chart-days"></div>
     </div>
   </div>
 

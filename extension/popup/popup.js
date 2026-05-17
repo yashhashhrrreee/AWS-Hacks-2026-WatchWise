@@ -247,6 +247,96 @@ function render() {
   }
 }
 
+// ── Weekly chart ──────────────────────────────────────────────────────────────
+
+const DAY_ABBR = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+function renderWeekChart(days) {
+  const svg = document.getElementById('week-svg');
+  const dayRow = document.getElementById('week-chart-days');
+  if (!svg || !dayRow) return;
+
+  const W = 268, H = 110;
+  const padL = 0, padR = 0, padT = 8, padB = 2;
+  const chartW = W - padL - padR;
+  const chartH = H - padT - padB;
+  const n = days.length; // 7
+
+  const slotW = chartW / n;
+  const barW  = Math.floor(slotW * 0.45);
+
+  const maxVal = Math.max(...days.map(d => Math.max(d.entSec, d.eduSec)), 1);
+
+  const scaleY = v => padT + chartH - (v / maxVal) * chartH;
+  const barX   = i => padL + i * slotW + (slotW - barW) / 2;
+  const dotX   = i => padL + i * slotW + slotW / 2;
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  let svgHtml = '';
+
+  // Subtle grid lines (2)
+  [0.5, 1].forEach(frac => {
+    const y = padT + chartH * (1 - frac) + (frac === 1 ? 0 : 0);
+    svgHtml += `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W - padR}" y2="${y.toFixed(1)}"
+      stroke="rgba(255,255,255,0.05)" stroke-width="1"/>`;
+  });
+
+  // Bars — entertainment (orange)
+  days.forEach((d, i) => {
+    const bh = Math.max(2, (d.entSec / maxVal) * chartH);
+    const by = padT + chartH - bh;
+    const isToday = d.date === todayStr;
+    const fill = isToday ? '#fb923c' : '#f97316';
+    const opacity = d.entSec === 0 ? '0.2' : '0.85';
+    svgHtml += `<rect x="${barX(i).toFixed(1)}" y="${by.toFixed(1)}"
+      width="${barW}" height="${bh.toFixed(1)}"
+      rx="3" fill="${fill}" opacity="${opacity}"/>`;
+  });
+
+  // Line — education (green): build polyline points
+  const linePoints = days.map((d, i) => {
+    const x = dotX(i).toFixed(1);
+    const y = scaleY(d.eduSec).toFixed(1);
+    return `${x},${y}`;
+  }).join(' ');
+
+  svgHtml += `<polyline points="${linePoints}"
+    fill="none" stroke="#a3e635" stroke-width="1.8"
+    stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>`;
+
+  // Dots on line
+  days.forEach((d, i) => {
+    const cx = dotX(i).toFixed(1);
+    const cy = scaleY(d.eduSec).toFixed(1);
+    const isToday = d.date === todayStr;
+    svgHtml += `<circle cx="${cx}" cy="${cy}" r="${isToday ? 4 : 3}"
+      fill="${isToday ? '#a3e635' : '#1a1a2e'}"
+      stroke="#a3e635" stroke-width="1.8"/>`;
+  });
+
+  svg.innerHTML = svgHtml;
+
+  // Day labels
+  dayRow.innerHTML = days.map(d => {
+    const isToday = d.date === todayStr;
+    const label = DAY_ABBR[new Date(d.date + 'T12:00:00').getDay()];
+    return `<span class="week-day-label${isToday ? ' today' : ''}">${isToday ? 'Today' : label}</span>`;
+  }).join('');
+}
+
+async function loadWeeklyStats(token, userId) {
+  try {
+    const res = await fetch(`${API_BASE}/weekly-stats?userId=${encodeURIComponent(userId)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    if (data.days) renderWeekChart(data.days);
+  } catch (err) {
+    console.warn('[FocusGuard] weekly stats fetch failed', err);
+  }
+}
+
 async function loadStats(token, userId) {
   try {
     const res = await fetch(`${API_BASE}/stats?userId=${encodeURIComponent(userId)}`, {
@@ -453,6 +543,7 @@ async function showDashboard(userId) {
   if (storage.fg_token) {
     initLimitCard(storage.fg_token, userId);
     loadStats(storage.fg_token, userId);
+    loadWeeklyStats(storage.fg_token, userId);
     clearInterval(statsRefreshInterval);
     statsRefreshInterval = setInterval(
       () => loadStats(storage.fg_token, userId),
