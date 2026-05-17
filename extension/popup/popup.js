@@ -120,6 +120,22 @@ authForm.addEventListener('submit', async (e) => {
   const password = passwordInput.value;
   const endpoint = currentTab === 'login' ? '/auth/login' : '/auth/signup';
 
+  const ALLOWED_DOMAINS = new Set([
+    'gmail.com', 'yahoo.com', 'yahoo.co.in', 'yahoo.co.uk',
+    'outlook.com', 'hotmail.com', 'live.com', 'msn.com',
+    'icloud.com', 'me.com', 'mac.com',
+    'protonmail.com', 'proton.me',
+    'aol.com', 'mail.com', 'zoho.com',
+  ]);
+  const emailDomain = email.toLowerCase().split('@')[1] || '';
+  if (currentTab === 'signup' && !ALLOWED_DOMAINS.has(emailDomain)) {
+    authError.textContent = 'Please use a valid email provider (Gmail, Yahoo, Outlook, iCloud, etc.)';
+    authError.classList.remove('hidden');
+    authBtn.textContent = 'Create Account';
+    authBtn.disabled = false;
+    return;
+  }
+
   try {
     const res = await fetch(`${API_BASE}${endpoint}`, {
       method: 'POST',
