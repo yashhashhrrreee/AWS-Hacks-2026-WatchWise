@@ -219,9 +219,18 @@
         </div>
       </div>
 
-      <button class="action-btn glass-sm action-purple" id="warning-ack">
-        <span>Got it</span>
-      </button>
+      <div class="warn-actions">
+        <button class="action-btn glass-sm action-purple" id="warning-ack">
+          <span>Got it</span>
+        </button>
+        <button class="action-btn glass-sm action-block-toggle" id="block-mode-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="icon-12">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          <span id="block-mode-label">Block me at 100%</span>
+        </button>
+      </div>
     </div>
   </div>
 

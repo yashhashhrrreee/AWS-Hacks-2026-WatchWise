@@ -35,6 +35,8 @@ const entRemainingEl  = document.getElementById('ent-remaining');
 const warningModal    = document.getElementById('warning-modal');
 const warningClose    = document.getElementById('warning-close');
 const warningAck      = document.getElementById('warning-ack');
+const blockModeBtn    = document.getElementById('block-mode-btn');
+const blockModeLabel  = document.getElementById('block-mode-label');
 const warnPctEl       = document.getElementById('warn-pct');
 const warnRemainingEl = document.getElementById('warn-remaining-value');
 const warnBarEl       = document.getElementById('warn-bar');
@@ -135,6 +137,34 @@ function dismissBlock() {
 
 if (warningClose) warningClose.addEventListener('click', dismissWarning);
 if (warningAck)   warningAck.addEventListener('click', dismissWarning);
+
+let blockModeEnabled = false;
+
+async function loadBlockMode() {
+  const s = await chrome.storage.local.get('fg_block_mode');
+  blockModeEnabled = !!s.fg_block_mode;
+  updateBlockModeBtn();
+}
+
+function updateBlockModeBtn() {
+  if (!blockModeBtn || !blockModeLabel) return;
+  if (blockModeEnabled) {
+    blockModeBtn.classList.add('active');
+    blockModeLabel.textContent = 'Block mode: ON';
+  } else {
+    blockModeBtn.classList.remove('active');
+    blockModeLabel.textContent = 'Block me at 100%';
+  }
+}
+
+if (blockModeBtn) {
+  blockModeBtn.addEventListener('click', async () => {
+    blockModeEnabled = !blockModeEnabled;
+    await chrome.storage.local.set({ fg_block_mode: blockModeEnabled });
+    updateBlockModeBtn();
+    if (blockModeEnabled) dismissWarning();
+  });
+}
 if (blockClose)   blockClose.addEventListener('click', dismissBlock);
 
 const warnBackdrop  = warningModal && warningModal.querySelector('.modal-backdrop');
@@ -541,6 +571,7 @@ async function showDashboard(userId) {
   }
 
   if (storage.fg_token) {
+    loadBlockMode();
     initLimitCard(storage.fg_token, userId);
     loadStats(storage.fg_token, userId);
     loadWeeklyStats(storage.fg_token, userId);
