@@ -51,6 +51,9 @@ let serverEduSec      = 0;
 let limitSec          = 7200;
 let studyGoalSec      = 7200;
 let limitChangedAt    = null;
+let currentStreak     = 0;
+let streakAtRisk      = false;
+let graceExpiresAt    = null;
 let liveSessionSec    = 0;
 let livePlaying       = false;
 let liveEduSec        = 0;
@@ -198,6 +201,29 @@ function render() {
   }
   if (resetHint) resetHint.textContent = `resets in ${timeUntilMidnightHM()}`;
 
+  // Streak display
+  const streakLabel = document.getElementById('streak-label');
+  const streakRisk  = document.getElementById('streak-risk');
+  const streakGraceTime = document.getElementById('streak-grace-time');
+  const streakIcon  = document.getElementById('streak-icon');
+  if (streakLabel) {
+    streakLabel.textContent = `${currentStreak}-day streak`;
+  }
+  if (streakRisk && streakGraceTime) {
+    if (streakAtRisk && graceExpiresAt) {
+      const remainSec = Math.max(0, Math.floor((new Date(graceExpiresAt) - Date.now()) / 1000));
+      const h = Math.floor(remainSec / 3600);
+      const m = Math.floor((remainSec % 3600) / 60);
+      streakGraceTime.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+      streakRisk.classList.remove('hidden');
+    } else {
+      streakRisk.classList.add('hidden');
+    }
+  }
+  if (streakIcon) {
+    streakIcon.style.color = streakAtRisk ? 'var(--red)' : '';
+  }
+
   // Limit settings cooldown display
   renderLimitCooldown();
 
@@ -232,6 +258,9 @@ async function loadStats(token, userId) {
     limitSec       = data.limitSeconds || 7200;
     studyGoalSec   = data.studyGoalSeconds || 7200;
     limitChangedAt = data.limitChangedAt || null;
+    currentStreak  = data.currentStreak || 0;
+    streakAtRisk   = data.streakAtRisk  || false;
+    graceExpiresAt = data.graceExpiresAt || null;
     if (typeof data.educationalSeconds === 'number') serverEduSec = data.educationalSeconds;
 
     syncLimitSliders();

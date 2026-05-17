@@ -626,3 +626,11 @@ html, body {
 }
 .limit-save-msg.success { color: #86efac; }
 .limit-save-msg.error   { color: var(--red); }
+
+/* ── Streak risk badge ───────────────────────────────────────────────── */
+.streak-risk {
+  font-size: 9px;
+  color: var(--orange);
+  margin-left: 4px;
+  font-weight: 600;
+}
