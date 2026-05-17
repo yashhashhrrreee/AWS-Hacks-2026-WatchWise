@@ -14,7 +14,7 @@ exports.handler = async (event) => {
   if (!user) return respond(401, { message: 'Unauthorized' });
 
   const body = JSON.parse(event.body || '{}');
-  const { videoId, videoTitle, videoCreator, durationSeconds, userId } = body;
+  const { videoId, videoTitle, videoCreator, durationSeconds, userId, classification } = body;
 
   // Validate that the token user matches the submitted userId
   if (user.userId !== userId) return respond(403, { message: 'Forbidden' });
@@ -36,7 +36,7 @@ exports.handler = async (event) => {
         videoTitle:      { S: videoTitle || '' },
         videoCreator:    { S: videoCreator || '' },
         durationSeconds: { N: String(Math.round(durationSeconds)) },
-        classification:  { S: 'noneducational' },
+        classification:  { S: classification === 'educational' ? 'educational' : 'noneducational' },
         date:            { S: today },
         createdAt:       { S: new Date().toISOString() },
       },

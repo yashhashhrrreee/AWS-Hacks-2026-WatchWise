@@ -26,9 +26,24 @@ exports.handler = async (event) => {
     const durationSeconds = parseInt(newImage.durationSeconds?.N || '0', 10);
     const date            = newImage.date?.S;
 
-    // Only process non-educational sessions
-    if (classification !== 'noneducational') continue;
     if (!userId || !date || durationSeconds < 1) continue;
+
+    // Educational sessions: only accumulate educationalSeconds, no alert checks
+    if (classification === 'educational') {
+      try {
+        await ddb.send(new UpdateItemCommand({
+          TableName: DAILY_TOTALS_TABLE,
+          Key: { userId: { S: userId }, date: { S: date } },
+          UpdateExpression: 'ADD educationalSeconds :dur',
+          ExpressionAttributeValues: { ':dur': { N: String(durationSeconds) } },
+        }));
+      } catch (err) {
+        console.error(`Error updating edu seconds for user ${userId}:`, err);
+      }
+      continue;
+    }
+
+    if (classification !== 'noneducational') continue;
 
     try {
       // 1. Atomically update daily total and get new values

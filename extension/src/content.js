@@ -11,6 +11,7 @@
 
   let currentVideoId = null;
   let isNonEducational = false;
+  let isEducational = false;
   let timerInterval = null;
   let sessionSeconds = 0;
   let eduTimerInterval = null;
@@ -98,23 +99,39 @@
   function flushSession() {
     if (!isNonEducational || sessionSeconds < 1) {
       log(`flushSession skipped (isNonEducational=${isNonEducational}, seconds=${sessionSeconds})`);
-      return;
+    } else {
+      const meta = getMetadata();
+      log(`FLUSHING non-edu session: ${sessionSeconds}s of "${meta.title}"`);
+      chrome.runtime.sendMessage({
+        type: 'FLUSH_SESSION',
+        payload: {
+          videoId: currentVideoId,
+          videoTitle: meta.title,
+          videoCreator: meta.creator,
+          durationSeconds: sessionSeconds,
+          classification: 'noneducational',
+        }
+      });
+      sessionSeconds = 0;
+      publishLive();
     }
 
-    const meta = getMetadata();
-    log(`FLUSHING session: ${sessionSeconds}s of "${meta.title}"`);
-    chrome.runtime.sendMessage({
-      type: 'FLUSH_SESSION',
-      payload: {
-        videoId: currentVideoId,
-        videoTitle: meta.title,
-        videoCreator: meta.creator,
-        durationSeconds: sessionSeconds,
-      }
-    });
-
-    sessionSeconds = 0;
-    publishLive();
+    if (isEducational && eduSessionSeconds >= 1) {
+      const meta = getMetadata();
+      log(`FLUSHING edu session: ${eduSessionSeconds}s of "${meta.title}"`);
+      chrome.runtime.sendMessage({
+        type: 'FLUSH_SESSION',
+        payload: {
+          videoId: currentVideoId,
+          videoTitle: meta.title,
+          videoCreator: meta.creator,
+          durationSeconds: eduSessionSeconds,
+          classification: 'educational',
+        }
+      });
+      eduSessionSeconds = 0;
+      publishLive();
+    }
   }
 
   // ── Video event binding ───────────────────────────────────────────────────
@@ -151,6 +168,7 @@
     log(`new videoId detected: ${videoId}`);
     currentVideoId = videoId;
     isNonEducational = false;
+    isEducational = false;
     stopTimer();
     stopEduTimer();
     sessionSeconds = 0;
@@ -179,6 +197,7 @@
           const video = getVideoElement();
           if (video && !video.paused) startTimer();
         } else if (response && response.educational === true) {
+          isEducational = true;
           const video = getVideoElement();
           if (video && !video.paused) startEduTimer();
         }

@@ -32,10 +32,11 @@ exports.handler = async (event) => {
       })),
     ]);
 
-    const limitSeconds = parseInt(userRow.Item?.dailyLimitSeconds?.N || '7200', 10);
-    const totalSeconds = parseInt(totalRow.Item?.totalSeconds?.N || '0', 10);
+    const limitSeconds        = parseInt(userRow.Item?.dailyLimitSeconds?.N || '7200', 10);
+    const totalSeconds        = parseInt(totalRow.Item?.totalSeconds?.N || '0', 10);
+    const educationalSeconds  = parseInt(totalRow.Item?.educationalSeconds?.N || '0', 10);
 
-    return respond(200, { totalSeconds, limitSeconds, date: today });
+    return respond(200, { totalSeconds, limitSeconds, educationalSeconds, date: today });
   } catch (err) {
     console.error('stats error:', err);
     return respond(500, { message: 'Failed to load stats' });
