@@ -156,6 +156,23 @@ Resources:
             Path: /session
             Method: POST
 
+  WeeklyStatsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: focusguard-weekly-stats
+      CodeUri: lambdas/
+      Handler: weekly-stats/index.handler
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref DailyTotalsTable
+      Events:
+        GetWeeklyStats:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /weekly-stats
+            Method: GET
+
   SetLimitFunction:
     Type: AWS::Serverless::Function
     Properties:
