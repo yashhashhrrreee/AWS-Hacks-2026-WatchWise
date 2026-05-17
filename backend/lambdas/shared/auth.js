@@ -35,6 +35,18 @@ async function authHandler(event) {
       return respond(400, { message: 'Invalid email address' });
     }
 
+    const ALLOWED_DOMAINS = new Set([
+      'gmail.com', 'yahoo.com', 'yahoo.co.in', 'yahoo.co.uk',
+      'outlook.com', 'hotmail.com', 'live.com', 'msn.com',
+      'icloud.com', 'me.com', 'mac.com',
+      'protonmail.com', 'proton.me',
+      'aol.com', 'mail.com', 'zoho.com',
+    ]);
+    const domain = email.toLowerCase().split('@')[1];
+    if (!ALLOWED_DOMAINS.has(domain)) {
+      return respond(400, { message: 'Please use a valid email provider (Gmail, Yahoo, Outlook, iCloud, etc.)' });
+    }
+
     const existing = await ddb.send(new GetItemCommand({
       TableName: USERS_TABLE,
       Key: { userId: { S: email.toLowerCase() } },
