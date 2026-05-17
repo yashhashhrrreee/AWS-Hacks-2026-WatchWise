@@ -6,6 +6,9 @@
 //   4. Flushing session to background when video stops
 
 (() => {
+  const log = (...args) => console.log('%c[FocusGuard]', 'color:#7c6aff;font-weight:bold', ...args);
+  log('content script loaded');
+
   let currentVideoId = null;
   let isNonEducational = false;
   let timerInterval = null;
@@ -42,6 +45,7 @@
 
   function startTimer() {
     if (timerInterval) return;
+    log('timer STARTED (non-educational video playing)');
     timerInterval = setInterval(() => {
       sessionSeconds++;
     }, 1000);
@@ -49,22 +53,20 @@
 
   function stopTimer() {
     if (timerInterval) {
+      log(`timer STOPPED at ${sessionSeconds}s`);
       clearInterval(timerInterval);
       timerInterval = null;
     }
   }
 
   function flushSession() {
-    console.log('[FocusGuard content] flushSession called', {
-      isNonEducational, sessionSeconds, currentVideoId
-    });
     if (!isNonEducational || sessionSeconds < 1) {
-      console.log('[FocusGuard content] flushSession SKIPPED (not non-edu or 0 seconds)');
+      log(`flushSession skipped (isNonEducational=${isNonEducational}, seconds=${sessionSeconds})`);
       return;
     }
 
     const meta = getMetadata();
-    console.log('[FocusGuard content] sending FLUSH_SESSION', meta);
+    log(`FLUSHING session: ${sessionSeconds}s of "${meta.title}"`);
     chrome.runtime.sendMessage({
       type: 'FLUSH_SESSION',
       payload: {
@@ -103,8 +105,10 @@
 
   async function classifyCurrentVideo() {
     const videoId = getVideoId();
-    if (!videoId || videoId === currentVideoId) return;
+    if (!videoId) { log('no videoId in URL, skipping'); return; }
+    if (videoId === currentVideoId) { log(`already classified videoId=${videoId}, skipping`); return; }
 
+    log(`new videoId detected: ${videoId}`);
     currentVideoId = videoId;
     isNonEducational = false;
     stopTimer();
@@ -114,9 +118,9 @@
     await new Promise(r => setTimeout(r, 2000));
 
     const meta = getMetadata();
-    if (!meta.title) return;
+    if (!meta.title) { log('no title found, aborting classification'); return; }
 
-    console.log('[FocusGuard content] sending CLASSIFY_VIDEO', meta);
+    log('sending CLASSIFY_VIDEO to background', meta);
     chrome.runtime.sendMessage(
       {
         type: 'CLASSIFY_VIDEO',
@@ -124,14 +128,13 @@
       },
       (response) => {
         if (chrome.runtime.lastError) {
-          console.warn('[FocusGuard content] sendMessage error:', chrome.runtime.lastError);
+          log('classify error:', chrome.runtime.lastError.message);
           return;
         }
-        console.log('[FocusGuard content] classify response:', response);
+        log('classify RESPONSE:', response);
         if (response && response.educational === false) {
           isNonEducational = true;
           const video = getVideoElement();
-          console.log('[FocusGuard content] marked NON-EDU, video paused?', video?.paused);
           if (video && !video.paused) startTimer();
         }
       }
@@ -140,7 +143,12 @@
     // Bind events (safe to call multiple times, events won't double-fire
     // because we replace the video element on navigation)
     const video = getVideoElement();
-    if (video) bindVideoEvents(video);
+    if (video) {
+      log('binding play/pause/ended events to <video>');
+      bindVideoEvents(video);
+    } else {
+      log('no <video> element found yet');
+    }
   }
 
   // ── SPA navigation detection ──────────────────────────────────────────────

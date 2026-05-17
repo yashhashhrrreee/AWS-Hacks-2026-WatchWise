@@ -99,12 +99,11 @@ function showAlertPopup(data) {
 async function classifyVideo(payload) {
   const token = await getToken();
   if (!token) {
-    console.warn('[FocusGuard] classifyVideo: no token, defaulting to educational');
+    console.log('[FocusGuard] classify skipped — not logged in');
     return { educational: true };
   }
 
-  console.log('[FocusGuard] classifyVideo POST /classify', payload);
-
+  console.log('[FocusGuard] POST /classify ←', payload);
   try {
     const res = await fetch(`${API_BASE}/classify`, {
       method: 'POST',
@@ -115,7 +114,7 @@ async function classifyVideo(payload) {
       body: JSON.stringify(payload),
     });
     const data = await res.json();
-    console.log('[FocusGuard] /classify response:', res.status, data);
+    console.log(`[FocusGuard] /classify → ${res.status}`, data);
     return data;
   } catch (e) {
     console.error('[FocusGuard] Classify error', e);
@@ -128,15 +127,12 @@ async function classifyVideo(payload) {
 async function flushSession(payload) {
   const token = await getToken();
   const userId = await getUserId();
-  console.log('[FocusGuard] flushSession called', { hasToken: !!token, userId, payload });
   if (!token || !userId) {
-    console.warn('[FocusGuard] flushSession aborting — missing token or userId');
+    console.log('[FocusGuard] session flush skipped — not logged in');
     return;
   }
 
-  const body = { ...payload, userId };
-  console.log('[FocusGuard] POST /session body:', body);
-
+  console.log('[FocusGuard] POST /session ←', payload);
   try {
     const res = await fetch(`${API_BASE}/session`, {
       method: 'POST',
@@ -144,10 +140,10 @@ async function flushSession(payload) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ ...payload, userId }),
     });
-    const text = await res.text();
-    console.log('[FocusGuard] /session response:', res.status, text);
+    const data = await res.json();
+    console.log(`[FocusGuard] /session → ${res.status}`, data);
   } catch (e) {
     console.error('[FocusGuard] Session flush error', e);
   }
