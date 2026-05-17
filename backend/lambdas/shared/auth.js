@@ -30,6 +30,11 @@ async function authHandler(event) {
 
   // ── Signup ──────────────────────────────────────────────────────────────
   if (path.endsWith('/signup')) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+    if (!emailRegex.test(email)) {
+      return respond(400, { message: 'Invalid email address' });
+    }
+
     const existing = await ddb.send(new GetItemCommand({
       TableName: USERS_TABLE,
       Key: { userId: { S: email.toLowerCase() } },
